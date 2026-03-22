@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 260 30% 98%; /* Softer, slightly warm purple/gray white */
+    --foreground: 260 20% 15%; /* Softer text color */
+
+    --card: 0 0% 100%;
+    --card-foreground: 260 20% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 260 20% 15%;
+
+    --primary: 262 70% 75%; /* Soft purple */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 260 30% 95%;
+    --secondary-foreground: 260 50% 40%;
+
+    --muted: 260 20% 94%;
+    --muted-foreground: 260 10% 45%;
+
+    --accent: 320 60% 80%; /* Soft pink accent */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 60% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 260 20% 90%;
+    --input: 260 20% 90%;
+    --ring: 262 70% 75%;
+
+    --radius: 1.5rem;
+
+    --surface: 260 30% 98%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 260 15% 12%; /* Soft dark purple instead of harsh black */
+    --foreground: 260 20% 95%;
+    --card: 260 15% 15%;
+    --card-foreground: 260 20% 95%;
+    --popover: 260 15% 15%;
+    --popover-foreground: 260 20% 95%;
+    --primary: 262 60% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 260 25% 20%;
+    --secondary-foreground: 260 20% 95%;
+    --muted: 260 15% 20%;
+    --muted-foreground: 260 15% 65%;
+    --accent: 320 50% 70%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 160 60% 45%;
+    --success-foreground: 0 0% 100%;
+    --border: 260 15% 22%;
+    --input: 260 15% 22%;
+    --ring: 262 60% 65%;
+    --surface: 260 15% 13%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border rounded-3xl shadow-sm;
+  }
+  .btn-press {
+    @apply active:scale-[0.98] transition-transform duration-100;
+  }
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(262 70% 75%), hsl(320 60% 80%));
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(262 70% 75%), hsl(320 60% 80%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
