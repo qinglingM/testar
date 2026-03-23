@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthModal from "./AuthModal";
 import VipPricingModal from "../payment/VipPricingModal";
+import { toast } from "sonner";
 
 interface UserDrawerProps {
   isOpen: boolean;
@@ -22,8 +23,20 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
   const [isVipOpen, setIsVipOpen] = useState(false);
 
   const handleLogout = () => {
-    // In a real app, clear store. For mock, we just refresh or set user to null
     useQuizStore.setState({ user: null });
+  };
+
+  const showHelpSupport = () => {
+    toast("关注公众号以获得高级支持", {
+      description: "微信公众号搜索：TESTSAR 探测星",
+      icon: <HelpCircle className="w-5 h-5 text-primary" />,
+      style: {
+        borderRadius: '24px',
+        padding: '16px',
+        background: '#fff',
+        border: '2px solid #f0f0f0'
+      }
+    });
   };
 
   return (
@@ -37,7 +50,6 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
               className="fixed inset-0 z-[100] bg-background max-w-md mx-auto overflow-y-auto no-scrollbar overscroll-contain h-[100dvh]"
             >
-              {/* Solid Header */}
               <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/50 px-6 py-4 flex items-center justify-between">
                 <button 
                   onClick={onClose}
@@ -46,11 +58,10 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                   <ChevronLeft className="w-5 h-5 text-foreground" />
                 </button>
                 <h2 className="font-display font-bold text-lg">个人中心</h2>
-                <div className="w-10" /> {/* Spacer */}
+                <div className="w-10" />
               </div>
 
               <div className="p-8 pt-6 pb-20">
-                {/* Header / User Info */}
                 <div className="flex items-center gap-5 mb-10">
                   <div className="relative">
                     <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20 p-1.5">
@@ -65,7 +76,7 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                     )}
                   </div>
                   <div>
-                    <h3 className={`text-2xl font-display font-bold ${user ? 'text-foreground' : 'text-red-500'}`}>
+                    <h3 className={`text-2xl font-display font-bold text-foreground`}>
                       {user ? user.nickname : "探测星访客"}
                     </h3>
                     <div className="flex items-center gap-2 mt-1.5">
@@ -79,14 +90,12 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                   </div>
                 </div>
 
-                {/* Quick Stats */}
                 <div className="grid grid-cols-3 gap-3 mb-10">
                   <StatCard label="已测项目" value={completedCount} />
-                  <StatCard label="加入天数" value={user?.joinDays || "1"} isMock={!user} />
-                  <StatCard label="灵魂厚度" value={user?.stats.soulThickness || "42"} isMock={!user} />
+                  <StatCard label="加入天数" value={user?.joinDays || "1"} />
+                  <StatCard label="灵魂厚度" value={user?.stats.soulThickness || "42"} />
                 </div>
 
-                {/* VIP Card */}
                 {!user?.isVip && (
                   <motion.div 
                     whileTap={{ scale: 0.98 }}
@@ -99,14 +108,13 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                         <Key className="w-5 h-5 text-yellow-300" />
                         <span className="text-sm font-bold uppercase tracking-widest leading-none">Activate Pro Plan</span>
                       </div>
-                      <h4 className="text-lg font-display font-black mb-1 text-red-100 italic whitespace-nowrap">输入激活码开启深读</h4>
+                      <h4 className="text-lg font-display font-black mb-1 text-white italic whitespace-nowrap">输入激活码开启深读</h4>
                       <p className="text-xs opacity-80 leading-relaxed font-medium">获取全部高维度画像、稀缺度等级及深度建议</p>
                     </div>
                     <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 opacity-60" />
                   </motion.div>
                 )}
 
-                {/* Menu Sections */}
                 <div className="space-y-8">
                   <div>
                     <SectionTitle label="核心账户" />
@@ -128,21 +136,19 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                   </div>
 
                   <div>
-                    <SectionTitle label="偏好设置" />
+                    <SectionTitle label="系统与偏助" />
                     <div className="space-y-1">
-                      <MenuItem icon={Bell} label="消息通知管理" isMock />
                       <MenuItem icon={Eye} label="隐私查看限制" sub="量子加密策略" onClick={() => { onClose(); navigate('/privacy'); }} />
                       <MenuItem 
                         icon={HelpCircle} 
                         label="帮助与支持" 
                         sub="联系 TESTSAR 探测星客服" 
-                        isMock 
+                        onClick={showHelpSupport}
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Action Area */}
                 <div className="mt-12 pt-8 border-t border-border/10">
                   {user ? (
                     <button 
@@ -182,26 +188,26 @@ const SectionTitle = ({ label }: { label: string }) => (
   <h4 className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-3">{label}</h4>
 );
 
-const StatCard = ({ label, value, isMock }: any) => (
+const StatCard = ({ label, value }: any) => (
   <div className="bg-muted/30 rounded-2xl p-4 text-center border border-border/50">
-    <p className={`text-xl font-display font-black ${isMock ? 'text-red-500' : 'text-foreground'}`}>{value}</p>
+    <p className={`text-xl font-display font-black text-foreground`}>{value}</p>
     <p className="text-[10px] text-muted-foreground font-bold mt-1 uppercase tracking-tighter opacity-70">{label}</p>
   </div>
 );
 
-const MenuItem = ({ icon: Icon, label, sub, badge, isMock, onClick }: any) => (
+const MenuItem = ({ icon: Icon, label, sub, badge, onClick }: any) => (
   <motion.button 
     whileTap={{ scale: 0.98 }}
     onClick={onClick}
     className="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-muted/40 transition-colors btn-press active:bg-muted"
   >
     <div className="flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isMock ? 'bg-red-50' : 'bg-muted/50'} text-foreground/70`}>
-        <Icon className={`w-5 h-5 ${isMock ? 'text-red-400' : ''}`} />
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-muted/50 text-foreground/70`}>
+        <Icon className={`w-5 h-5`} />
       </div>
       <div className="text-left">
-        <p className={`text-sm font-bold ${isMock ? 'text-red-500' : 'text-foreground'}`}>{label}</p>
-        {sub && <p className={`text-[10px] mt-0.5 leading-none ${isMock ? 'text-red-400/60' : 'text-muted-foreground'}`}>{sub}</p>}
+        <p className={`text-sm font-bold text-foreground`}>{label}</p>
+        {sub && <p className={`text-[10px] mt-0.5 leading-none text-muted-foreground`}>{sub}</p>}
       </div>
     </div>
     <div className="flex items-center gap-2">

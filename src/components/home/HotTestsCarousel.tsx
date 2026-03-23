@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, ArrowRight } from "lucide-react";
+import { ChevronRight, ArrowRight, Flame } from "lucide-react";
 import { getQuizDef } from "@/data/registry";
 import { track } from "@/utils/analytics";
 
@@ -9,7 +9,7 @@ interface HotTest {
   id: string;
   title: string;
   subtitle: string;
-  participants: string;
+  participants: number | string;
   questions: number;
   intensity: number; // 0-100
   color: string;
@@ -130,8 +130,11 @@ export const HotTestsCarousel = ({ tests }: HotTestsCarouselProps) => {
                 <h3 className="font-display font-bold text-base text-foreground truncate">
                   {current.title}
                 </h3>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  <span className="text-red-500 font-bold">{current.participants}</span>人已测 · 推荐度 <span className="text-red-500 font-bold">{current.intensity}%</span>
+                <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                  <Flame className="w-2.5 h-2.5 text-orange-500 fill-orange-500" />
+                  <span className="font-black text-foreground">热度 {Number(current.participants).toLocaleString()}</span>
+                  <span className="mx-1 opacity-20">|</span>
+                  <span className="font-medium">推荐度 <span className="font-black text-foreground">{current.intensity}%</span></span>
                 </p>
               </div>
               

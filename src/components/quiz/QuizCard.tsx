@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Flame } from "lucide-react";
 import { motion } from "framer-motion";
 import { track } from "@/utils/analytics";
 
@@ -8,7 +8,7 @@ interface QuizCardProps {
   subtitle: string;
   coverImage: string;
   questionsCount: number;
-  participantsText: string;
+  participantsText: number;
   colorClass: string;
   onClick: () => void;
   index?: number;
@@ -51,7 +51,10 @@ const QuizCard = ({
         <p className="text-muted-foreground/80 text-xs mt-1.5 font-medium flex items-center gap-1.5">
           <span>{questionsCount}题</span>
           <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-          <span className="text-red-500 font-bold">[假] {participantsText}人已测</span>
+          <span className="flex items-center gap-0.5 text-orange-500 font-bold">
+            <Flame className="w-3 h-3" />
+            热度 {participantsText.toLocaleString()}
+          </span>
         </p>
       </div>
       <div className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center shrink-0">

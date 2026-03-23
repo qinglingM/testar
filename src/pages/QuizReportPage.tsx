@@ -129,8 +129,8 @@ const QuizReportPage = () => {
       <div className="px-6 pt-8 pb-6 text-center relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
         
-        <div className="inline-flex items-center rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-500 mb-5 border border-red-200">
-          ✓ [假] 已解锁全部私人定制内容
+        <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary mb-5 border border-primary/20">
+          ✓ PRO 版深度定制服务已生效
         </div>
         
         <h1 className="font-display font-extrabold text-[1.8rem] leading-tight text-foreground mb-2 whitespace-pre-wrap">

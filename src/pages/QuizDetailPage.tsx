@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
-import { Users, Clock, Target, Play, Key, X, Zap, Crown, Check, Sparkles, ChevronRight, ClipboardPaste, AlertCircle } from "lucide-react";
+import { Users, Clock, Target, Play, Key, X, Zap, Crown, Check, Sparkles, ChevronRight, ClipboardPaste, AlertCircle, Flame } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import Header from "@/components/layout/Header";
 import { getQuizDef } from "@/data/registry";
@@ -118,8 +118,8 @@ const QuizDetailPage = () => {
            transition={{ delay: 0.1 }}
         >
           <div className="flex gap-2 mb-3">
-            <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-semibold text-red-500 uppercase tracking-wider border border-red-100">
-              心理学专业
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-black text-primary uppercase tracking-widest border border-primary/20">
+              顶级心理学架构
             </span>
           </div>
           <h1 className="font-display font-extrabold text-[1.75rem] leading-tight mb-2 text-foreground">
@@ -131,32 +131,34 @@ const QuizDetailPage = () => {
 
           <div className="flex items-center gap-6 py-4 border-y border-border/50 mb-8">
             <div className="flex flex-col gap-1">
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><Target className="w-3.5 h-3.5" /> 题目数量</span>
-              <span className="font-display font-bold text-foreground">{questionsCount} 题</span>
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1 font-bold"><Target className="w-3.5 h-3.5" /> 题目数量</span>
+              <span className="font-display font-black text-foreground">{questionsCount} 题</span>
             </div>
             <div className="w-px h-8 bg-border/50" />
             <div className="flex flex-col gap-1">
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><Clock className="w-3.5 h-3.5" /> 预计耗时</span>
-              <span className="font-display font-bold text-foreground">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1 font-bold"><Clock className="w-3.5 h-3.5" /> 预计耗时</span>
+              <span className="font-display font-black text-foreground">
                 {quizDef.estimatedMinutes || Math.ceil(questionsCount / 10)} 分钟
               </span>
             </div>
             <div className="w-px h-8 bg-border/50" />
             <div className="flex flex-col gap-1">
-              <span className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><Users className="w-3.5 h-3.5" /> 已测人数</span>
-              <span className="font-display font-bold text-red-500">{participantsCount}</span>
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1 font-bold"><Flame className="w-3.5 h-3.5 text-orange-500" /> 当前热度</span>
+              <span className="font-display font-black text-foreground">
+                {Number(participantsCount).toLocaleString()}
+              </span>
             </div>
           </div>
 
-          <h3 className="font-display font-bold text-sm mb-3 text-foreground">你将获得什么</h3>
+          <h3 className="font-display font-black text-xs mb-3 text-muted-foreground uppercase tracking-widest">探测收益详情</h3>
           <ul className="space-y-3">
             {(quizDef.valueProps || [
               "深度的核心性格维度剖析",
               "你的社交行为模式与雷达图",
               "专属的潜在优势与发展卡点建议"
             ]).map((item, i) => (
-              <li key={i} className="flex items-start gap-3 text-sm text-foreground/80">
-                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-xs mt-0.5">✓</span>
+              <li key={i} className="flex items-start gap-3 text-sm text-foreground/80 font-bold">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-xs mt-0.5 font-black">✓</span>
                 <span className="leading-relaxed">{item}</span>
               </li>
             ))}
@@ -179,7 +181,7 @@ const QuizDetailPage = () => {
           }}
         >
           <Play className="w-5 h-5 fill-white" />
-          <span className="text-lg font-black uppercase tracking-widest text-white">激活</span>
+          <span className="text-lg font-black uppercase tracking-widest text-white">激 活</span>
         </motion.button>
       </div>
 
@@ -225,15 +227,15 @@ const QuizDetailPage = () => {
                 <div className="space-y-4">
                     <div className="flex gap-2">
                        <div className="relative flex-1 group">
-                         <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground transition-colors group-focus-within:text-primary" />
                          <input 
                            type="text"
                            placeholder="请输入激活码"
                            value={code}
-                           onChange={(e) => setCode(e.target.value)}
-                           className="w-full h-18 bg-muted/40 border-2 border-border/50 rounded-2xl pl-14 pr-6 font-display font-black text-lg tracking-[0.2em] focus:border-primary focus:bg-background outline-none transition-all uppercase placeholder:tracking-normal placeholder:font-medium shadow-inner"
+                           onChange={(e) => setCode(e.target.value.toUpperCase())}
+                           className="w-full h-18 bg-muted/30 border-2 border-border/50 rounded-2xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-4 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground placeholder:tracking-normal placeholder:font-medium uppercase"
                            onKeyDown={(e) => e.key === 'Enter' && handleActivation()}
                          />
+                         <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
                        </div>
                        <button 
                          onClick={handlePaste}
@@ -250,11 +252,11 @@ const QuizDetailPage = () => {
                       className="w-1/2 mx-auto h-16 rounded-[2rem] btn-premium shadow-xl animate-gradient-x disabled:opacity-50 flex items-center justify-center gap-3"
                     >
                       {isVerifying ? (
-                         <Clock className="w-6 h-6 animate-spin" />
+                         <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
                        ) : (
                          <>
                            <Sparkles className="w-5 h-5 fill-white" />
-                           <span className="text-lg font-black uppercase tracking-widest">激活</span>
+                           <span className="text-lg font-black uppercase tracking-widest text-white">激 活</span>
                          </>
                        )}
                     </button>
@@ -263,7 +265,7 @@ const QuizDetailPage = () => {
                 <div className="p-4 bg-muted/30 rounded-2xl border border-border/50">
                     <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">如何获取激活码？</h4>
                     <p className="text-[11px] text-muted-foreground leading-tight">
-                      如有疑问，请通过官方渠道获取或关注“探测星”公众号。
+                      如有疑问，请通过官方渠道获取或关注“TESTSAR 探测星”公众号。
                     </p>
                 </div>
               </div>
@@ -271,6 +273,12 @@ const QuizDetailPage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <CenteredErrorModal 
+        isOpen={showErrorModal} 
+        onClose={() => setShowErrorModal(false)} 
+        message={errorMessage} 
+      />
     </MobileLayout>
   );
 };
