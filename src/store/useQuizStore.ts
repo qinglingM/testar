@@ -34,6 +34,15 @@ export interface CompletedReport {
   metadata?: any;
 }
 
+export interface ActivationVerificationResult {
+  ok: boolean;
+  message: string;
+  grantedPro?: boolean;
+  grantedBase?: boolean;
+  tier?: string;
+  effectiveTier?: string;
+}
+
 export interface QuizState {
   user: User | null;
   currentQuizId: string | null;
@@ -76,7 +85,7 @@ export interface QuizState {
   loadReportFromHistory: (report: CompletedReport) => void;
   setVip: (value: boolean) => Promise<void>;
   setBaseVip: (value: boolean) => Promise<void>;
-  verifyActivationCode: (code: string) => Promise<boolean>;
+  verifyActivationCode: (code: string) => Promise<ActivationVerificationResult>;
   fetchUserHistory: () => Promise<void>;
 }
 
@@ -132,6 +141,15 @@ export const useQuizStore = create<QuizState>()(
               }
             };
             set({ user, isVip: user.isVip, isBaseVip: user.isBaseVip });
+
+            try {
+              await supabase
+                .from('profiles')
+                .update({ last_login_at: new Date().toISOString() })
+                .eq('id', data.user.id);
+            } catch (e) {
+              console.warn('[Supabase] Failed to update last login time', e);
+            }
           }
         } catch (e: any) {
           throw e;
@@ -143,19 +161,15 @@ export const useQuizStore = create<QuizState>()(
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
+            options: {
+              data: {
+                nickname: nickname || email.split('@')[0],
+              },
+            },
           });
 
           if (error) throw error;
           if (data.user) {
-             // Create profile
-             const { error: pError } = await supabase.from('profiles').insert({
-               id: data.user.id,
-               nickname: nickname || email.split('@')[0],
-               is_vip: false,
-               metadata: { is_base_vip: false }
-             });
-             if (pError) throw pError;
-             
              // Auto login after signup
              await get().login(email, password);
           }
@@ -217,10 +231,8 @@ export const useQuizStore = create<QuizState>()(
 
         if (state.user) {
           try {
-            await supabase.from('profiles').update({ 
-               is_vip: value,
-               // Assuming schema might have is_base_vip or similar, or just manage it in store
-               metadata: { ...(state.user as any).metadata, is_base_vip: get().isBaseVip }
+            await supabase.from('profiles').update({
+              is_vip: value,
             }).eq('id', state.user.id);
           } catch (e) {
             console.error('[Supabase] Failed to update VIP status', e);
@@ -232,35 +244,72 @@ export const useQuizStore = create<QuizState>()(
         const state = get();
         set({ isBaseVip: value });
         if (state.user) {
-           set({ user: { ...state.user, isBaseVip: value } });
+          set({ user: { ...state.user, isBaseVip: value } });
+
+          try {
+            await supabase.from('profiles').update({
+              metadata: { is_base_vip: value }
+            }).eq('id', state.user.id);
+          } catch (e) {
+            console.error('[Supabase] Failed to update BASE status', e);
+          }
         }
       },
 
       verifyActivationCode: async (code: string) => {
         const state = get();
         const cleanCode = code.trim().toUpperCase();
-        
-        // PRO Codes
-        if (cleanCode.startsWith('PRO-') || cleanCode.startsWith('TESTAR-')) {
-          await state.setVip(true);
-          return true;
-        }
-        
-        // BASE Codes
-        if (cleanCode.startsWith('BASE-')) {
-          await state.setBaseVip(true);
-          return true;
+
+        if (!state.user) {
+          return {
+            ok: false,
+            message: '请先登录后再激活',
+          };
         }
 
-        // UPGRADE Codes (Price Difference)
-        if (cleanCode.startsWith('UP-')) {
-           if (state.isBaseVip) {
-             await state.setVip(true);
-             return true;
-           }
+        try {
+          const { data, error } = await supabase.functions.invoke('verify-activation-code', {
+            body: { code: cleanCode },
+          });
+
+          if (error) {
+            return {
+              ok: false,
+              message: error.message || '激活失败，请稍后再试',
+            };
+          }
+
+          const result: ActivationVerificationResult = {
+            ok: Boolean(data?.ok),
+            message: data?.message || '激活失败，请稍后再试',
+            grantedPro: Boolean(data?.granted_pro),
+            grantedBase: Boolean(data?.granted_base),
+            tier: data?.tier,
+            effectiveTier: data?.effective_tier,
+          };
+
+          if (result.ok) {
+            const nextIsVip = state.isVip || Boolean(result.grantedPro);
+            const nextIsBaseVip = state.isBaseVip || Boolean(result.grantedBase);
+
+            set({
+              isVip: nextIsVip,
+              isBaseVip: nextIsBaseVip,
+              user: state.user ? {
+                ...state.user,
+                isVip: nextIsVip,
+                isBaseVip: nextIsBaseVip,
+              } : null,
+            });
+          }
+
+          return result;
+        } catch (e: any) {
+          return {
+            ok: false,
+            message: e?.message || '激活失败，请稍后再试',
+          };
         }
-        
-        return false;
       },
 
       fetchUserHistory: async () => {

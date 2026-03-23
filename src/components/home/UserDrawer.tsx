@@ -18,12 +18,13 @@ interface UserDrawerProps {
 const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
   const navigate = useNavigate();
   const user = useQuizStore(state => state.user);
+  const logout = useQuizStore(state => state.logout);
   const completedCount = useQuizStore(state => state.completedReports.length);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isVipOpen, setIsVipOpen] = useState(false);
 
-  const handleLogout = () => {
-    useQuizStore.setState({ user: null });
+  const handleLogout = async () => {
+    await logout();
   };
 
   const showHelpSupport = () => {

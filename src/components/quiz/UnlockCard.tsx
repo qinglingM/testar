@@ -1,4 +1,4 @@
-import { Lock, Sparkles, Loader2, ShieldCheck, Zap, BrainCircuit, Key, Check, ArrowUpCircle, ClipboardPaste } from "lucide-react";
+import { Lock, Sparkles, Loader2, ShieldCheck, Zap, Key, ArrowUpCircle, ClipboardPaste } from "lucide-react";
 import { CenteredErrorModal } from "@/components/ui/CenteredErrorModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
@@ -87,17 +87,18 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
     if (!code.trim() || isVerifying) return;
     
     setIsVerifying(true);
-    const ok = await verifyCode(code);
+    const result = await verifyCode(code);
     
-    track('verify_activation_code', { code, success: ok, type: isUpgrade ? 'upgrade' : 'full' });
+    track('verify_activation_code', { code, success: result.ok, type: isUpgrade ? 'upgrade' : 'full' });
     
-    if (ok) {
+    if (result.ok) {
       setSuccess(true);
+      toast.success(result.message || (isUpgrade ? "升级成功！已为您解锁全部权益" : "激活成功！正在生成深度报告..."));
       setTimeout(() => {
         onUnlock();
       }, 2200);
     } else {
-      setErrorMessage("您输入的激活码似乎并不在我们的星系中，请检查输入或寻找官方补给。");
+      setErrorMessage(result.message || "您输入的激活码似乎并不在我们的星系中，请检查输入或寻找官方补给。");
       setShowErrorModal(true);
       setIsVerifying(false);
     }

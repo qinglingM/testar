@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
-import { Users, Clock, Target, Play, Key, X, Zap, Crown, Check, Sparkles, ChevronRight, ClipboardPaste, AlertCircle, Flame } from "lucide-react";
+import { Clock, Target, Play, Key, X, Sparkles, ClipboardPaste, Flame } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import Header from "@/components/layout/Header";
 import { getQuizDef } from "@/data/registry";
@@ -59,14 +59,14 @@ const QuizDetailPage = () => {
     }
 
     setIsVerifying(true);
-    const ok = await verifyActivationCode(code);
+    const result = await verifyActivationCode(code);
     setIsVerifying(false);
 
-    if (ok) {
-      toast.success("验证成功！探测引擎已就绪");
+    if (result.ok) {
+      toast.success(result.message || "验证成功！探测引擎已就绪");
       handleStartFinal();
     } else {
-      setErrorMessage("激活码无效，请检查后再试");
+      setErrorMessage(result.message || "激活码无效，请检查后再试");
       setShowErrorModal(true);
     }
   };
@@ -273,11 +273,10 @@ const QuizDetailPage = () => {
           </div>
         )}
       </AnimatePresence>
-
-      <CenteredErrorModal 
-        isOpen={showErrorModal} 
-        onClose={() => setShowErrorModal(false)} 
-        message={errorMessage} 
+      <CenteredErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        message={errorMessage}
       />
     </MobileLayout>
   );

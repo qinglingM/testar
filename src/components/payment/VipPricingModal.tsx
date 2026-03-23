@@ -76,36 +76,45 @@ const VipPricingModal = ({ isOpen, onClose }: VipPricingModalProps) => {
   const user = useQuizStore(state => state.user);
 
   const handleVerify = async () => {
-    if (!code.trim()) {
-      toast.error("请输入激活码");
+    if (!user) {
+      toast.error("请先登录再进行激活");
+      return;
+    }
+
+    if (!code.trim() || isLoading) {
       return;
     }
 
     setIsLoading(true);
-    const ok = await verifyCode(code.trim());
-    track('verify_activation_code', { code, success: ok });
+    const result = await verifyCode(code.trim());
 
-    if (ok) {
-        useQuizStore.setState({ isVip: true });
-        setShowSuccess(true);
-        setTimeout(() => {
-          setShowSuccess(false);
-          onClose();
-        }, 2200);
+    track('verify_activation_code', { code, success: result.ok });
+
+    if (result.ok) {
+      toast.success(result.message || "账户升级成功！尊享 VIP 权限已开启");
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setCode("");
+        setIsLoading(false);
+        onClose();
+      }, 2200);
     } else {
-      setErrorMessage("您输入的激活码似乎并不在我们的星系中，请检查输入或寻找官方补给。");
+      setErrorMessage(result.message || "您输入的激活码似乎并不在我们的星系中，请检查输入或寻找官方补给。");
       setShowErrorModal(true);
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      setCode(text.toUpperCase());
-      toast.success("已粘贴");
+      if (text) {
+        setCode(text.trim().toUpperCase());
+        toast.success("已从剪贴板粘贴");
+      }
     } catch (err) {
-      toast.error("无法访问剪贴板");
+      toast.error("粘贴失败，请手动输入");
     }
   };
 
