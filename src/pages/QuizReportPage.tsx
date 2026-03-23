@@ -117,7 +117,7 @@ const QuizReportPage = () => {
   return (
     <MobileLayout>
       <Header 
-        title="深度探测报告" 
+        title={`${quizDef?.title || '深度探测'}报告`} 
         onBack={() => navigate('/history')}
         rightElement={
           <button className="p-2 btn-press" onClick={() => setIsShareOpen(true)}>

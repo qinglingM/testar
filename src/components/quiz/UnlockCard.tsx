@@ -192,15 +192,16 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
                    
                    <h3 className="font-display font-black text-lg mb-4">输 入 激 活 码</h3>
                    <div className="w-full flex gap-2 mb-6">
-                      <div className="relative flex-1">
+                      <div className="relative flex-1 group">
                          <input 
                            type="text"
                            placeholder={isUpgrade ? "UP-XXXX-XXXX" : "XXXX-XXXX-XXXX"}
                            value={code}
                            onChange={(e) => setCode(e.target.value.toUpperCase())}
-                           className="w-full h-18 bg-muted/40 border-2 border-border/50 rounded-2xl px-6 text-center font-display font-black tracking-[0.2em] text-2xl focus:border-primary focus:bg-background outline-none transition-all placeholder:text-muted-foreground placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
+                           className="w-full h-18 bg-muted/30 border-2 border-border/50 rounded-2xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-4 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground placeholder:tracking-normal placeholder:font-medium uppercase"
                            onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
                          />
+                         <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
                       </div>
                       <button 
                          onClick={handlePaste}
