@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
-import { Share2, RotateCcw, History, ChevronRight } from "lucide-react";
+import { Share2, RotateCcw, History, ChevronRight, ChevronLeft, Crown, Sparkles, ArrowRight, AlertTriangle, X } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import Header from "@/components/layout/Header";
 import ResultSummaryCard from "@/components/quiz/ResultSummaryCard";
@@ -10,27 +10,32 @@ import { RelatedTestsBanner } from "@/components/quiz/RelatedTestsBanner";
 import { useQuizStore } from "@/store/useQuizStore";
 import { getQuizDef } from "@/data/registry";
 import { track } from "@/utils/analytics";
+import { toast } from "sonner";
+import { ShareModal } from "@/components/quiz/ShareModal";
 
 const QuizResultPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [showRetestConfirm, setShowRetestConfirm] = useState(false);
   const viewStartTime = useRef<number>(Date.now());
 
   // Load from store
   const finalResult = useQuizStore(state => state.finalResult);
   const dimensionPairs = useQuizStore(state => state.dimensionPairs);
   const answers = useQuizStore(state => state.answers);
+  const isVip = useQuizStore(state => state.user?.isVip);
+  const isBaseVip = useQuizStore(state => state.user?.isBaseVip);
   const quizDef = slug ? getQuizDef(slug) : null;
 
   useEffect(() => {
-    // If user refreshes on Result page without a valid result in store, bump them home
-    if (!quizDef || !finalResult || dimensionPairs.length === 0) {
+    if (!quizDef || !finalResult) {
        navigate('/');
     } else {
        track('result_free_view', {
          quiz_id: quizDef.id,
          result_key: finalResult.id || 'default',
-         is_first_view: true // Simplified for now
+         is_first_view: true
        });
     }
   }, [quizDef, finalResult, navigate, dimensionPairs]);
@@ -38,6 +43,10 @@ const QuizResultPage = () => {
   if (!quizDef || !finalResult) {
     return <MobileLayout><div className="p-6">Loading...</div></MobileLayout>;
   }
+
+  const currentResult = quizDef.results.find(r => r.id === finalResult.id) || finalResult;
+  const cityBaseline = currentResult.cityBaseline;
+  const professionalScores = useQuizStore.getState().professionalScores;
 
   const getAnswerDetail = (qId: string | number) => {
     const q = quizDef.questions.find(q => String(q.id) === String(qId));
@@ -49,16 +58,12 @@ const QuizResultPage = () => {
 
   return (
     <MobileLayout className="bg-muted/30">
-      {/* 
-        This wrapper is designed to be the "Screenshot Area". 
-        It has no bottom sticky buttons interrupting the visual flow. 
-      */}
       <div id="screenshot-area" className="relative pb-6 bg-background rounded-b-[2.5rem] shadow-sm overflow-hidden mb-6">
         <Header 
           title="你的测试报告" 
           transparent 
           rightElement={
-            <button className="p-2 btn-press" onClick={() => {}}>
+            <button className="p-2 btn-press" onClick={() => setIsShareOpen(true)}>
               <Share2 className="w-5 h-5 text-foreground" />
             </button>
           }
@@ -66,38 +71,39 @@ const QuizResultPage = () => {
         
         <div className="px-5 mt-2">
           <ResultSummaryCard 
-            title={finalResult.title}
-            subtitle={finalResult.subtitle}
+            title={currentResult.title}
+            subtitle={currentResult.subtitle}
             dimensionPairs={dimensionPairs}
             chartType={quizDef.visualization === 'radar' ? 'radar' : 'spectrum'}
             dimensions={quizDef.dimensions}
-            scores={useQuizStore.getState().professionalScores}
+            scores={professionalScores}
+            cityBaseline={cityBaseline}
           />
 
-          {/* New: Community/Population Preview for Free Users */}
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="mt-6 p-4 rounded-2xl bg-secondary/20 border border-secondary/30 flex items-center justify-between"
+            className={`mt-6 p-4 rounded-2xl border flex items-center justify-between ${isVip ? 'bg-primary/10 border-primary/20' : 'bg-secondary/20 border-secondary/30'}`}
           >
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                初步人群画像识别
+                {isVip ? '深度人才数据扫描' : '初步画像识别'}
               </span>
               <p className="text-xs text-foreground/80 font-medium">
-                你的特质属于人群中占比约 <span className="text-primary font-black">{(useQuizStore.getState().rarity || 5).toFixed(1)}%</span> 的群体
+                {isVip 
+                  ? '已对接全库千万级样本比对。' 
+                  : `你的特质在人群中占比约 ${(useQuizStore.getState().rarity || 5).toFixed(1)}%`}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px]">
-               Free
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] ${isVip ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
+               {isVip ? <Crown className="w-4 h-4" /> : 'Free'}
             </div>
           </motion.div>
         </div>
       </div>
 
       <div className="px-5 space-y-8 pb-24">
-        {/* Footprint Preview (Only 3 for free users) */}
         <div className="glass-card p-5 relative overflow-hidden">
           <div className="flex items-center gap-2 mb-5">
              <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
@@ -109,7 +115,7 @@ const QuizResultPage = () => {
           </div>
           
           <div className="space-y-5">
-            {Object.keys(answers).slice(0, 3).map((qId, idx) => {
+            {Object.keys(answers).slice(0, isVip ? 10 : 3).map((qId, idx) => {
               const detail = getAnswerDetail(qId);
               if (!detail) return null;
               return (
@@ -128,7 +134,11 @@ const QuizResultPage = () => {
           </div>
           
           <div className="mt-5 pt-4 border-t border-dashed flex items-center justify-between">
-             <p className="text-[10px] text-muted-foreground font-medium">剩余 {Object.keys(answers).length - 3} 项足印深度解析待解锁...</p>
+             <p className="text-[10px] text-muted-foreground font-medium">
+               {isVip 
+                 ? `已回溯全部 ${Object.keys(answers).length} 项探测足迹` 
+                 : `剩余 ${Object.keys(answers).length - 3} 项待解锁...`}
+             </p>
              <button 
                onClick={() => {
                  const dwellTime = (Date.now() - viewStartTime.current) / 1000;
@@ -140,58 +150,90 @@ const QuizResultPage = () => {
                       dwell_time: dwellTime
                     });
                  }
-                 navigate(`/quiz/${slug}/report`);
+
+                 if (isVip) {
+                   navigate(`/quiz/${slug}/report`);
+                 } else {
+                   const unlockCard = document.getElementById('unlock-section');
+                   if (unlockCard) {
+                     unlockCard.scrollIntoView({ behavior: 'smooth' });
+                     toast.info("请解锁深度报告以查看全部足迹");
+                   } else {
+                     navigate(`/quiz/${slug}/report`);
+                   }
+                 }
                }}
                className="text-[10px] font-bold text-primary flex items-center gap-0.5"
              >
-               立即解锁 <ChevronRight className="w-3 h-3" />
+               {isVip ? '查看全部分析' : '立即解锁'} <ChevronRight className="w-3 h-3" />
              </button>
           </div>
         </div>
 
-        {/* Paywall / Unlock Section */}
-        <div className="relative overflow-hidden rounded-3xl group">
+        <div id="unlock-section" className="relative overflow-hidden rounded-3xl group">
           <h3 className="font-display font-bold text-sm mb-3 pl-1 flex items-center gap-2 text-foreground">
             <span className="w-1.5 h-4 bg-primary rounded-full block" />
             专属深度分析
           </h3>
           
-          {/* Blurred Preview Content */}
-          <div className="absolute inset-0 top-10 flex flex-col gap-4 opacity-40 blur-[8px] select-none pointer-events-none px-4">
-             <div className="h-4 w-3/4 bg-muted rounded-full" />
-             <div className="h-4 w-full bg-muted rounded-full" />
-             <div className="h-4 w-5/6 bg-muted rounded-full" />
-             <div className="h-4 w-2/3 bg-muted rounded-full" />
-             <div className="h-20 w-full bg-muted rounded-2xl" />
-             <div className="h-4 w-full bg-muted rounded-full" />
-             <div className="h-4 w-1/2 bg-muted rounded-full" />
-          </div>
+          {isVip ? (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-card p-8 flex flex-col items-center text-center bg-primary/5 border-primary/20"
+            >
+               <div className="w-16 h-16 bg-primary text-white rounded-3xl flex items-center justify-center mb-6 shadow-xl ring-8 ring-primary/5">
+                  <Sparkles className="w-8 h-8 fill-white" />
+               </div>
+               <h3 className="font-display font-black text-xl mb-3">深度分析已就绪</h3>
+               <p className="text-xs text-muted-foreground mb-8 leading-relaxed max-w-[240px]">
+                 核心潜能库、避坑指南、灵魂交互建议等 3000 字专属深度内容已为您同步。
+               </p>
+               <button 
+                 onClick={() => navigate(`/quiz/${slug}/report`)}
+                 className="w-full py-4 rounded-2xl bg-foreground text-background font-display font-bold text-sm btn-press flex items-center justify-center gap-2 shadow-2xl hover:bg-black transition-colors"
+               >
+                 立即进入深度报告 <ArrowRight className="w-4 h-4" />
+               </button>
+            </motion.div>
+          ) : (
+            <>
+              <div className="absolute inset-0 top-10 flex flex-col gap-4 opacity-40 blur-[8px] select-none pointer-events-none px-4">
+                 <div className="h-4 w-3/4 bg-muted rounded-full" />
+                 <div className="h-4 w-full bg-muted rounded-full" />
+                 <div className="h-4 w-5/6 bg-muted rounded-full" />
+                 <div className="h-4 w-2/3 bg-muted rounded-full" />
+                 <div className="h-20 w-full bg-muted rounded-2xl" />
+                 <div className="h-4 w-full bg-muted rounded-full" />
+                 <div className="h-4 w-1/2 bg-muted rounded-full" />
+              </div>
 
-          <UnlockCard 
-            onUnlock={() => {
-              const dwellTime = (Date.now() - viewStartTime.current) / 1000;
-              if (quizDef && finalResult) {
-                track('result_free_view', {
-                  quiz_id: quizDef.id,
-                  result_key: finalResult.id || 'default',
-                  is_first_view: false,
-                  dwell_time: dwellTime
-                });
-              }
-              navigate(`/quiz/${slug}/report`);
-            }} 
-          />
+              <UnlockCard 
+                isUpgrade={isBaseVip}
+                onUnlock={() => {
+                  const dwellTime = (Date.now() - viewStartTime.current) / 1000;
+                  if (quizDef && finalResult) {
+                    track('result_free_view', {
+                      quiz_id: quizDef.id,
+                      result_key: finalResult.id || 'default',
+                      is_first_view: false,
+                      dwell_time: dwellTime
+                    });
+                  }
+                  navigate(`/quiz/${slug}/report`);
+                }} 
+              />
+            </>
+          )}
         </div>
 
-        {/* Related Tests Rolling Banner */}
         <RelatedTestsBanner />
 
-        {/* Secondary Actions */}
         <div className="flex gap-4">
           <motion.button
             whileTap={{ scale: 0.98 }}
             className="flex-1 py-3.5 rounded-2xl bg-card border shadow-sm text-foreground font-medium text-sm btn-press flex items-center justify-center gap-2"
-            onClick={() => {}} // In real app, trigger share sheet or html2canvas
+            onClick={() => setIsShareOpen(true)}
           >
             <Share2 className="w-4 h-4 text-muted-foreground" />
             分享此页
@@ -199,13 +241,69 @@ const QuizResultPage = () => {
           <motion.button
             whileTap={{ scale: 0.98 }}
             className="flex-1 py-3.5 rounded-2xl bg-card border shadow-sm text-foreground font-medium text-sm btn-press flex items-center justify-center gap-2"
-            onClick={() => navigate(`/quiz/${slug}`)}
+            onClick={() => setShowRetestConfirm(true)}
           >
             <RotateCcw className="w-4 h-4 text-muted-foreground" />
             再测一次
           </motion.button>
         </div>
+        
+        <div className="mt-8 text-center">
+          <button 
+            onClick={() => navigate('/history')}
+            className="text-xs font-bold text-muted-foreground flex items-center justify-center gap-2 mx-auto py-2 px-4 hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" /> 返回我的探测记录
+          </button>
+        </div>
       </div>
+      
+      <ShareModal 
+        isOpen={isShareOpen} 
+        onClose={() => setIsShareOpen(false)}
+        quizTitle={quizDef.title}
+        resultTitle={currentResult.title}
+        gradeLabel={(useQuizStore.getState().rarity || 5).toFixed(1) + "%"}
+      />
+
+      {/* Retest Confirmation Modal */}
+      <AnimatePresence>
+        {showRetestConfirm && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+             <motion.div 
+               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+               onClick={() => setShowRetestConfirm(false)}
+               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+             />
+             <motion.div 
+               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+               className="relative w-full max-w-xs bg-background rounded-[2rem] p-8 shadow-2xl text-center"
+             >
+                <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                   <AlertTriangle className="w-7 h-7" />
+                </div>
+                <h3 className="font-display font-black text-lg mb-3">确定要重新测试吗？</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-8">
+                  激活码仅支持<span className="text-foreground font-bold">单次有效测试</span>。由于结果是唯一的，重新测试将覆盖当前结果，且需消耗新的激活码。
+                </p>
+                <div className="space-y-3">
+                  <button 
+                    onClick={() => navigate(`/quiz/${slug}`)}
+                    className="w-full py-3.5 rounded-xl bg-foreground text-background font-display font-bold text-xs btn-press"
+                  >
+                    确定，去获取新激活码
+                  </button>
+                  <button 
+                    onClick={() => setShowRetestConfirm(false)}
+                    className="w-full py-3.5 rounded-xl bg-muted text-foreground font-display font-bold text-xs btn-press"
+                  >
+                    取消，保留结果
+                  </button>
+                </div>
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </MobileLayout>
   );
 };

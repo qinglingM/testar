@@ -26,6 +26,8 @@ export type EventName =
   | 'logout'
   | 'share_click'
   | 'share_success'
+  | 'unlock_card_click'
+  | 'verify_activation_code'
   | 'related_quiz_click';
 
 export interface CommonProperties {
@@ -73,6 +75,8 @@ export interface EventParams {
   member_center_view: {};
   logout: {};
   share_success: { quiz_id: string; result_key: string };
+  unlock_card_click: { quiz_id: string; type?: 'upgrade' | 'full' };
+  verify_activation_code: { code: string; success: boolean; type?: 'upgrade' | 'full' };
   account_bind_success: { method: string };
   restore_purchase: { restore_count: number };
 }

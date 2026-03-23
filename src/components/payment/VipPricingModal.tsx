@@ -1,13 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Crown, Check, Zap, Sparkles, ShieldCheck, Loader2 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { Crown, Check, Zap, Sparkles, Key, Loader2, X, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 import { useQuizStore } from "@/store/useQuizStore";
 import { track } from "@/utils/analytics";
-import { useParams } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import wechatIcon from "@/assets/icons/wechat-pay.svg";
-import alipayIcon from "@/assets/icons/alipay.svg";
 
 interface VipPricingModalProps {
   isOpen: boolean;
@@ -16,92 +12,46 @@ interface VipPricingModalProps {
 
 const VipPricingModal = ({ isOpen, onClose }: VipPricingModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const setVip = useQuizStore(state => state.setVip);
+  const [code, setCode] = useState("");
+  const [success, setSuccess] = useState(false);
+  const verifyCode = useQuizStore(state => state.verifyActivationCode);
   const user = useQuizStore(state => state.user);
-  const { slug } = useParams();
-  const paywallOpenTime = useRef<number>(0);
-  const [paymentMethod, setPaymentMethod] = useState<'wechat' | 'alipay'>('wechat');
 
-  useEffect(() => {
-    if (isOpen) {
-      paywallOpenTime.current = Date.now();
-      track('paywall_view', {
-        quiz_id: slug,
-        paywall_type: 'member_offer', // or 'single_unlock' depending on context
-        trigger_point: 'report_unlock'
-      });
-    }
-  }, [isOpen, slug]);
-
-  const handleSubscription = async (planId: string, price: string) => {
+  const handleVerify = async () => {
     if (!user) {
-      toast.error("请先登录再进行购买");
+      toast.error("请先登录再进行激活");
       return;
     }
 
-    const decisionTime = paywallOpenTime.current > 0 
-      ? (Date.now() - paywallOpenTime.current) / 1000 
-      : 0;
-
-    track('purchase_click', {
-      product_type: planId,
-      payment_method: paymentMethod,
-      quiz_id: slug,
-      price: parseFloat(price),
-      decision_time: decisionTime
-    });
+    if (!code.trim() || isLoading) return;
 
     setIsLoading(true);
+    const ok = await verifyCode(code);
     
-    try {
-      // 1. Call Create Payment Edge Function
-      const { data, error } = await supabase.functions.invoke('create-payment', {
-        body: {
-          userId: user.id,
-          planId: planId,
-          paymentMethod: paymentMethod,
-          quizId: slug,
-          amount: parseFloat(price)
-        }
-      });
+    track('verify_activation_code', { code, success: ok });
 
-      if (error) throw error;
-      if (!data?.paymentUrl) throw new Error("无法获取支付链接");
-
-      // 2. Redirect to payment page or open in new tab
-      // In a real mobile environment, this might trigger a deep link or redirect
-      window.location.href = data.paymentUrl;
-
-    } catch (err: any) {
-      console.error('[Payment] Initiation failed', err);
-      toast.error(`支付发起失败: ${err.message || '未知错误'}`);
+    if (ok) {
+      setSuccess(true);
+      toast.success("账户升级成功！尊享 VIP 权限已开启");
+      setTimeout(() => {
+        onClose();
+        // Reset local state after close
+        setTimeout(() => {
+          setSuccess(false);
+          setCode("");
+          setIsLoading(false);
+        }, 300);
+      }, 2000);
+    } else {
+      toast.error("无效的激活码，请检查后重新输入");
       setIsLoading(false);
     }
   };
 
-  const plans = [
-    {
-      id: "single",
-      title: "单次深度解锁",
-      price: "9.9",
-      unit: "/测评",
-      features: ["解锁单本报告全部维度", "高清灵魂海报导出", "关键维度深度解析"],
-      recommend: false
-    },
-    {
-      id: "yearly",
-      title: "探测星 VIP 年度会员",
-      price: "49",
-      unit: "/年",
-      features: ["全站测评无限次解锁", "专属 VIP 高阶画像", "永久存档与历史回溯", "优先体验实验室新品"],
-      recommend: true
-    }
-  ];
-
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[110] flex items-end justify-center sm:items-center">
+        <div className="fixed inset-0 z-[110] flex items-end justify-center sm:items-center p-4 sm:p-0">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -115,105 +65,102 @@ const VipPricingModal = ({ isOpen, onClose }: VipPricingModalProps) => {
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="relative w-full max-w-md bg-background rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 pt-6 pb-12 shadow-2xl overflow-y-auto max-h-[95vh] no-scrollbar"
+            className="relative w-full max-w-md bg-background rounded-[2.5rem] p-8 pt-6 pb-12 shadow-2xl overflow-hidden"
           >
-            {/* Grab handle */}
-            <div className="w-12 h-1.5 bg-muted rounded-full mx-auto mb-8 sm:hidden opacity-40" />
-
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-2">
-                <Crown className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-                <h2 className="text-xl font-display font-bold">解锁深度探测权限</h2>
+            <div className="flex justify-between items-center mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-yellow-400 flex items-center justify-center text-white shadow-lg shadow-yellow-400/20">
+                  <Crown className="w-6 h-6 fill-white" />
+                </div>
+                <h2 className="text-xl font-display font-black tracking-tight text-foreground">激活 Pro 特权</h2>
               </div>
               <button 
                 onClick={onClose}
-                className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center btn-press"
+                className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center btn-press hover:bg-muted transition-colors"
+                disabled={success}
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-6">
-              {/* Feature Grid Summary */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <button 
-                  onClick={() => setPaymentMethod('wechat')}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-2xl border-2 transition-all ${
-                    paymentMethod === 'wechat' ? 'border-primary bg-primary/5' : 'border-border/50 bg-muted/20'
-                  }`}
+            <AnimatePresence mode="wait">
+              {success ? (
+                <motion.div 
+                  key="success"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex flex-col items-center text-center py-6"
                 >
-                  <img src={wechatIcon} alt="WeChat" className="w-5 h-5" />
-                  <span className="text-xs font-bold">微信支付</span>
-                </button>
-                <button 
-                  onClick={() => setPaymentMethod('alipay')}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-2xl border-2 transition-all ${
-                    paymentMethod === 'alipay' ? 'border-primary bg-primary/5' : 'border-border/50 bg-muted/20'
-                  }`}
-                >
-                  <img src={alipayIcon} alt="Alipay" className="w-5 h-5" />
-                  <span className="text-xs font-bold">支付宝</span>
-                </button>
-              </div>
-
-              {/* Pricing Cards */}
-              <div className="space-y-4">
-                {plans.map((plan) => (
-                  <div 
-                    key={plan.id}
-                    className={`relative p-6 rounded-3xl border-2 transition-all ${
-                      plan.recommend ? 'border-primary bg-primary/5' : 'border-border/50 bg-muted/20'
-                    }`}
-                  >
-                    {plan.recommend && (
-                      <div className="absolute -top-3 right-6 bg-primary text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-primary/20">
-                        Most Popular
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h4 className="text-sm font-bold text-foreground/70">{plan.title}</h4>
-                        <div className="flex items-baseline gap-1 mt-1">
-                          <span className="text-2xl font-display font-black">¥{plan.price}</span>
-                          <span className="text-[10px] text-muted-foreground font-medium uppercase">{plan.unit}</span>
-                        </div>
-                      </div>
-                      {plan.recommend && <Sparkles className="w-5 h-5 text-primary" />}
-                    </div>
-
-                    <ul className="space-y-2 mb-6">
-                      {plan.features.map((f, i) => (
-                        <li key={i} className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium">
-                          <Check className={`w-3 h-3 ${plan.recommend ? 'text-primary' : 'text-muted-foreground'}`} />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-
-                    <button 
-                      disabled={isLoading}
-                      onClick={() => handleSubscription(plan.id, plan.price)}
-                      className={`w-full py-4 rounded-2xl font-display font-bold text-sm btn-press flex items-center justify-center gap-2 transition-all ${
-                        plan.recommend 
-                        ? 'bg-primary text-white shadow-xl shadow-primary/20' 
-                        : 'bg-foreground text-background'
-                      } disabled:opacity-50`}
+                  <div className="relative mb-6">
+                    <motion.div 
+                       animate={{ 
+                         scale: [1, 1.1, 1],
+                         rotate: [0, 5, -5, 0]
+                       }}
+                       transition={{ duration: 3, repeat: Infinity }}
+                       className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-emerald-500/30"
                     >
-                      {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "立即完成订阅"}
-                    </button>
+                      <Check className="w-12 h-12" strokeWidth={3} />
+                    </motion.div>
+                    <motion.div 
+                      animate={{ opacity: [0, 1, 0], scale: [0.8, 1.2, 0.8] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute -inset-4 border-2 border-emerald-500 rounded-full opacity-0"
+                    />
                   </div>
-                ))}
-              </div>
+                  <h3 className="text-2xl font-display font-black mb-2">欢迎加入 PRO 会员</h3>
+                  <p className="text-sm text-muted-foreground opacity-80">您的特权已即时生效，正在返回...</p>
+                </motion.div>
+              ) : (
+                <motion.div key="form" className="space-y-8">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <FeatureItem icon={Sparkles} label="深度报告" desc="无限次查看深度画像" />
+                      <FeatureItem icon={Zap} label="智力引擎" desc="解锁量子分析模型" />
+                      <FeatureItem icon={ShieldCheck} label="永久存档" desc="历史记录安全备份" />
+                      <FeatureItem icon={Check} label="去广告" desc="纯净体验无干扰" />
+                    </div>
+                  </div>
 
-              <div className="pt-4 text-center">
-                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                   支付即代表您同意 <span className="text-foreground underline underline-offset-2">订阅服务协议</span>
-                   <br />
-                   订阅将自动续费，可随时在设置中取消。
-                 </p>
-              </div>
-            </div>
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60 ml-1">
+                      Activation Code
+                    </p>
+                    <div className="relative group">
+                      <input 
+                        type="text"
+                        placeholder="ENTER CODE HERE"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        className="w-full bg-muted/30 border-2 border-border/50 rounded-2xl px-6 py-5 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-4 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground placeholder:tracking-normal placeholder:font-medium uppercase"
+                        onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+                      />
+                      <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleVerify}
+                    disabled={!code.trim() || isLoading}
+                    className="w-full py-5 rounded-2xl bg-foreground text-background font-display font-black text-sm btn-press flex items-center justify-center gap-3 shadow-2xl hover:bg-black transition-all disabled:opacity-50 disabled:scale-95"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 fill-primary text-primary" />
+                        立即激活 Pro 特权
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-center text-[10px] text-muted-foreground opacity-50 font-medium">
+                    通过激活码激活，无需支付订阅费用 <br />
+                    如有疑问请联系您的服务商获取激活码
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </div>
       )}
@@ -221,14 +168,14 @@ const VipPricingModal = ({ isOpen, onClose }: VipPricingModalProps) => {
   );
 };
 
-const FeatureSmall = ({ icon: Icon, label, desc }: any) => (
-  <div className="flex items-center gap-3 p-3 rounded-2xl bg-muted/30 border border-border/40">
-    <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-primary">
-      <Icon className="w-4 h-4" />
+const FeatureItem = ({ icon: Icon, label, desc }: any) => (
+  <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-muted/30 border border-border/40 hover:border-primary/20 transition-colors group">
+    <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
+      <Icon className="w-5 h-5" />
     </div>
-    <div>
-      <p className="text-[10px] font-bold text-foreground leading-tight">{label}</p>
-      <p className="text-[8px] text-muted-foreground mt-0.5">{desc}</p>
+    <div className="flex flex-col">
+      <p className="text-xs font-black text-foreground leading-tight mb-0.5">{label}</p>
+      <p className="text-[9px] text-muted-foreground font-medium leading-none">{desc}</p>
     </div>
   </div>
 );

@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    --background: 260 30% 98%; /* Softer, slightly warm purple/gray white */
-    --foreground: 260 20% 15%; /* Softer text color */
+    --background: 260 30% 98%; 
+    --foreground: 260 20% 15%; 
 
     --card: 0 0% 100%;
     --card-foreground: 260 20% 15%;
@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 260 20% 15%;
 
-    --primary: 262 70% 75%; /* Soft purple */
+    --primary: 262 70% 75%; 
     --primary-foreground: 0 0% 100%;
 
     --secondary: 260 30% 95%;
@@ -24,7 +24,7 @@
     --muted: 260 20% 94%;
     --muted-foreground: 260 10% 45%;
 
-    --accent: 320 60% 80%; /* Soft pink accent */
+    --accent: 320 60% 80%; 
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -40,19 +40,10 @@
     --radius: 1.5rem;
 
     --surface: 260 30% 98%;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
-    --background: 260 15% 12%; /* Soft dark purple instead of harsh black */
+    --background: 260 15% 12%; 
     --foreground: 260 20% 95%;
     --card: 260 15% 15%;
     --card-foreground: 260 20% 95%;
@@ -112,4 +103,30 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .btn-premium {
+    @apply relative overflow-hidden transition-all duration-300;
+    background: linear-gradient(135deg, #FF4545 0%, #7C3AED 50%, #6366F1 100%);
+    background-size: 200% auto;
+    @apply shadow-[0_10px_30px_-6px_rgba(124,58,237,0.4)] text-white font-black uppercase tracking-widest flex items-center justify-center gap-2;
+  }
+
+  .btn-premium:hover {
+    @apply shadow-[0_15px_40px_-4px_rgba(124,58,237,0.6)] -translate-y-0.5;
+    background-position: right center;
+  }
+
+  .btn-premium:active {
+    @apply scale-[0.98] translate-y-0;
+  }
+
+  .animate-gradient-x {
+    animation: gradient-x 3s ease infinite;
+  }
+}
+
+@keyframes gradient-x {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }

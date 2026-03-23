@@ -8,7 +8,8 @@ export interface User {
   id: string;
   nickname: string;
   avatar?: string;
-  isVip: boolean;
+  isVip: boolean;      // For PRO
+  isBaseVip: boolean;  // For BASE
   joinDays: number;
   stats: {
     soulThickness: number;
@@ -28,6 +29,9 @@ export interface CompletedReport {
   dimensionPairs: any[];
   coreAdvantages: any[];
   isBalanced: boolean;
+  careerTips?: string[];
+  relationshipAdvice?: string;
+  metadata?: any;
 }
 
 export interface QuizState {
@@ -54,11 +58,16 @@ export interface QuizState {
   dimensionPairs: any[];
   coreAdvantages: Array<{ icon: string; title: string; desc: string }>;
   isBalanced: boolean; 
+  careerTips: string[];
+  relationshipAdvice: string;
   completedReports: CompletedReport[];
-  isVip: boolean; // Legacy but kept for compatibility, prefer user.isVip
+  isVip: boolean;      // Latest Pro status
+  isBaseVip: boolean;  // Latest Base status
   
   // Actions
-  login: (nickname: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, nickname?: string) => Promise<void>;
+  logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   startQuiz: (quizId: string) => void;
   setAnswer: (questionId: string | number, optionIndex: number | string) => void;
@@ -66,6 +75,8 @@ export interface QuizState {
   resetQuiz: () => void;
   loadReportFromHistory: (report: CompletedReport) => void;
   setVip: (value: boolean) => Promise<void>;
+  setBaseVip: (value: boolean) => Promise<void>;
+  verifyActivationCode: (code: string) => Promise<boolean>;
   fetchUserHistory: () => Promise<void>;
 }
 
@@ -84,34 +95,78 @@ export const useQuizStore = create<QuizState>()(
       dimensionPairs: [],
       coreAdvantages: [],
       isBalanced: false,
+      careerTips: [],
+      relationshipAdvice: "",
       completedReports: [],
       isVip: false,
+      isBaseVip: false,
 
-      login: async (nickname) => {
-        const userId = `U-${Math.floor(Math.random() * 90000) + 10000}`; // Still random for demo, real auth would use supabase.auth
-        const newUser: User = {
-          id: userId,
-          nickname,
-          isVip: false,
-          joinDays: 1,
-          stats: {
-            soulThickness: 42,
-            completedCount: get().completedReports.length
-          }
-        };
-        
-        set({ user: newUser });
-
-        // Sync to Supabase Profiles if configured (Non-blocking)
+      login: async (email, password) => {
         try {
-          await supabase.from('profiles').upsert({
-            id: userId,
-            nickname: nickname,
-            is_vip: false
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
           });
-        } catch (e) {
-          console.warn('[Supabase] Sync failed, keeping local-only', e);
+
+          if (error) throw error;
+          if (data.user) {
+            // Fetch profile
+            const { data: profile, error: pError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', data.user.id)
+              .single();
+
+            if (pError && pError.code !== 'PGRST116') throw pError;
+
+            const user: User = {
+              id: data.user.id,
+              nickname: profile?.nickname || email.split('@')[0],
+              avatar: profile?.avatar_url,
+              isVip: profile?.is_vip || false,
+              isBaseVip: (profile?.metadata as any)?.is_base_vip || false,
+              joinDays: Math.ceil((Date.now() - new Date(data.user.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+              stats: {
+                soulThickness: 42,
+                completedCount: 1,
+              }
+            };
+            set({ user, isVip: user.isVip, isBaseVip: user.isBaseVip });
+          }
+        } catch (e: any) {
+          throw e;
         }
+      },
+
+      signUp: async (email, password, nickname) => {
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+          });
+
+          if (error) throw error;
+          if (data.user) {
+             // Create profile
+             const { error: pError } = await supabase.from('profiles').insert({
+               id: data.user.id,
+               nickname: nickname || email.split('@')[0],
+               is_vip: false,
+               metadata: { is_base_vip: false }
+             });
+             if (pError) throw pError;
+             
+             // Auto login after signup
+             await get().login(email, password);
+          }
+        } catch (e: any) {
+          throw e;
+        }
+      },
+
+      logout: async () => {
+        await supabase.auth.signOut();
+        set({ user: null, isVip: false, isBaseVip: false, completedReports: [] });
       },
 
       updateProfile: async (updates) => {
@@ -147,7 +202,9 @@ export const useQuizStore = create<QuizState>()(
           dominantTraits: [], 
           dimensionPairs: [],
           coreAdvantages: [],
-          isBalanced: false 
+          isBalanced: false,
+          careerTips: [],
+          relationshipAdvice: ""
         });
       },
       
@@ -160,11 +217,50 @@ export const useQuizStore = create<QuizState>()(
 
         if (state.user) {
           try {
-            await supabase.from('profiles').update({ is_vip: value }).eq('id', state.user.id);
+            await supabase.from('profiles').update({ 
+               is_vip: value,
+               // Assuming schema might have is_base_vip or similar, or just manage it in store
+               metadata: { ...(state.user as any).metadata, is_base_vip: get().isBaseVip }
+            }).eq('id', state.user.id);
           } catch (e) {
             console.error('[Supabase] Failed to update VIP status', e);
           }
         }
+      },
+
+      setBaseVip: async (value: boolean) => {
+        const state = get();
+        set({ isBaseVip: value });
+        if (state.user) {
+           set({ user: { ...state.user, isBaseVip: value } });
+        }
+      },
+
+      verifyActivationCode: async (code: string) => {
+        const state = get();
+        const cleanCode = code.trim().toUpperCase();
+        
+        // PRO Codes
+        if (cleanCode.startsWith('PRO-') || cleanCode.startsWith('TESTAR-')) {
+          await state.setVip(true);
+          return true;
+        }
+        
+        // BASE Codes
+        if (cleanCode.startsWith('BASE-')) {
+          await state.setBaseVip(true);
+          return true;
+        }
+
+        // UPGRADE Codes (Price Difference)
+        if (cleanCode.startsWith('UP-')) {
+           if (state.isBaseVip) {
+             await state.setVip(true);
+             return true;
+           }
+        }
+        
+        return false;
       },
 
       fetchUserHistory: async () => {
@@ -209,7 +305,7 @@ export const useQuizStore = create<QuizState>()(
         const { answers, completedReports, user } = get();
         const rawScores: Record<string, number> = {};
 
-        // 1. Calculate raw aggregated scores ... (Same logic as before)
+        // 1. Calculate raw aggregated scores
         quizDef.questions.forEach(q => {
           const selectedOptionIndex = answers[String(q.id)];
           if (selectedOptionIndex !== undefined) {
@@ -253,17 +349,62 @@ export const useQuizStore = create<QuizState>()(
           colorRight: p.colorRight
         })) || [];
 
+        const synergyTags: any[] = [];
+        if (quizDef.synergyRules) {
+          quizDef.synergyRules.forEach(rule => {
+            const isMatch = rule.trigger.every(t => {
+              const userAns = answers[String(t.qId)];
+              return t.optIdx.includes(userAns);
+            });
+            if (isMatch) {
+              const q1 = quizDef.questions.find(q => String(q.id) === String(rule.trigger[0].qId));
+              const a1 = q1?.options[answers[String(rule.trigger[0].qId)]]?.label;
+              const q2 = rule.trigger[1] ? quizDef.questions.find(q => String(q.id) === String(rule.trigger[1].qId)) : null;
+              const a2 = q2 ? q2.options[answers[String(rule.trigger[1].qId)]]?.label : "";
+
+              synergyTags.push({
+                title: rule.title,
+                reason: rule.reason,
+                q1: q1?.text || "",
+                a1: a1 || "",
+                q2: q2?.text || "",
+                a2: a2 || ""
+              });
+            }
+          });
+        }
+
+        const dominantTraits: any[] = [];
+        if (quizDef.polarizationLib) {
+          Object.entries(professionalScores).forEach(([dim, score]) => {
+            const lib = quizDef.polarizationLib![dim];
+            if (lib && (score > 80 || score < 20)) {
+              dominantTraits.push({
+                dim,
+                label: lib.label,
+                value: score,
+                intensity: score > 80 ? 'high' : 'low',
+                comment: score > 80 ? lib.high : lib.low
+              });
+            }
+          });
+        }
+
+        const isBalanced = Object.values(professionalScores).every(s => Math.abs(s - 50) < 15);
+
         const newReport: CompletedReport = {
           quizId: quizDef.id,
           timestamp: Date.now(),
           result: matchedResult,
           professionalScores,
           rarity,
-          synergyTags: [],
-          dominantTraits: [],
+          synergyTags,
+          dominantTraits,
           dimensionPairs: dimPairs,
           coreAdvantages: coreAdvantages,
-          isBalanced: false
+          isBalanced,
+          careerTips: sortedDims.map(d => quizDef.advantageLib?.[d.key]?.shortage).filter(Boolean) as string[],
+          relationshipAdvice: matchedResult.description.length > 50 ? matchedResult.description.slice(0, 50) + "..." : "在一段关系中，你的这种特质往往能成为对方最坚实的后盾。"
         };
 
         const filteredReports = completedReports.filter(r => r.quizId !== quizDef.id);
@@ -274,8 +415,13 @@ export const useQuizStore = create<QuizState>()(
           professionalScores: professionalScores,
           finalResult: matchedResult,
           rarity,
+          synergyTags,
+          dominantTraits,
           dimensionPairs: dimPairs,
           coreAdvantages: coreAdvantages,
+          isBalanced,
+          careerTips: newReport.careerTips || [],
+          relationshipAdvice: newReport.relationshipAdvice || "",
           completedReports: allReports
         });
 
@@ -291,11 +437,13 @@ export const useQuizStore = create<QuizState>()(
               metadata: {
                 result: matchedResult,
                 rarity,
-                synergyTags: [],
-                dominantTraits: [],
+                synergyTags,
+                dominantTraits,
                 dimensionPairs: dimPairs,
                 coreAdvantages,
-                isBalanced: false
+                isBalanced,
+                careerTips: sortedDims.map(d => quizDef.advantageLib?.[d.key]?.shortage).filter(Boolean),
+                relationshipAdvice: "与同类型的灵魂相遇时，你们会瞬间产生共振；而在互补型灵魂面前，你是那个温柔的引领者。"
               }
             });
           } catch (e) {
@@ -315,6 +463,8 @@ export const useQuizStore = create<QuizState>()(
           dimensionPairs: report.dimensionPairs,
           coreAdvantages: report.coreAdvantages,
           isBalanced: report.isBalanced,
+          careerTips: report.careerTips || [],
+          relationshipAdvice: report.relationshipAdvice || "",
         });
       },
 
@@ -330,7 +480,9 @@ export const useQuizStore = create<QuizState>()(
           dominantTraits: [],
           dimensionPairs: [],
           coreAdvantages: [],
-          isBalanced: false
+          isBalanced: false,
+          careerTips: [],
+          relationshipAdvice: ""
         });
       },
     }),
@@ -350,7 +502,10 @@ export const useQuizStore = create<QuizState>()(
         dimensionPairs: state.dimensionPairs,
         coreAdvantages: state.coreAdvantages,
         isBalanced: state.isBalanced,
-        isVip: state.isVip
+        careerTips: state.careerTips,
+        relationshipAdvice: state.relationshipAdvice,
+        isVip: state.isVip,
+        isBaseVip: state.isBaseVip
       }),
     }
   )

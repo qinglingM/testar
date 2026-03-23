@@ -11,13 +11,25 @@ import { useQuizStore } from "@/store/useQuizStore";
 import { ReportHistoryCard } from "@/components/home/ReportHistoryCard";
 import UserDrawer from "@/components/home/UserDrawer";
 import { getQuizDef } from "@/data/registry";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const HomePage = () => {
   const navigate = useNavigate();
   const [isUserOpen, setIsUserOpen] = useState(false);
   const completedReports = useQuizStore(state => state.completedReports);
   const loadReportFromHistory = useQuizStore(state => state.loadReportFromHistory);
+
+  useEffect(() => {
+    // Prevent back navigation from home
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      window.history.pushState(null, "", window.location.href);
+    };
+
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   
   const hotTests = [...ALL_TESTS].sort((a, b) => b.intensity - a.intensity).slice(0, 3);
 
@@ -88,7 +100,8 @@ const HomePage = () => {
                     report={report} 
                     onClick={() => {
                       loadReportFromHistory(report);
-                      navigate(`/quiz/${report.quizId}/report`);
+                      const isVip = useQuizStore.getState().user?.isVip;
+                      navigate(`/quiz/${report.quizId}/${isVip ? 'report' : 'result'}`);
                     }}
                   />
                 </div>

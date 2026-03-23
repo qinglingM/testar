@@ -35,25 +35,37 @@ interface ResultSummaryCardProps {
   chartType?: 'spectrum' | 'radar';
   dimensions?: Array<{ key: string; label: string; colorClass: string }>;
   scores?: Record<string, number>;
+  cityBaseline?: Record<string, number>;
 }
 
-const ResultSummaryCard = ({ title, subtitle, dimensionPairs, chartType = 'spectrum', dimensions, scores }: ResultSummaryCardProps) => {
+const ResultSummaryCard = ({ title, subtitle, dimensionPairs, chartType = 'spectrum', dimensions, scores, cityBaseline }: ResultSummaryCardProps) => {
   const isRadar = chartType === 'radar' && dimensions && scores;
 
   const radarData = isRadar ? {
     labels: dimensions.map(d => d.label.split(' ')[0]),
     datasets: [
       {
-        label: '得分倾向',
+        label: '你的评分',
         data: dimensions.map(d => scores[d.key] || 0),
-        backgroundColor: 'rgba(99, 102, 241, 0.2)',
-        borderColor: 'rgb(99, 102, 241)',
+        backgroundColor: 'rgba(239, 68, 68, 0.4)', // Red (User)
+        borderColor: 'rgb(239, 68, 68)',
         borderWidth: 2,
-        pointBackgroundColor: 'rgb(99, 102, 241)',
+        pointBackgroundColor: 'rgb(239, 68, 68)',
         pointBorderColor: '#fff',
         pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: 'rgb(99, 102, 241)',
+        pointHoverBorderColor: 'rgb(239, 68, 68)',
       },
+      ...(cityBaseline && Object.keys(cityBaseline).length > 0 ? [{
+        label: '城市基准',
+        data: dimensions.map(d => cityBaseline[d.key] || cityBaseline[d.key.toUpperCase()] || 0),
+        backgroundColor: 'rgba(59, 130, 246, 0.4)', // Blue (City)
+        borderColor: 'rgb(59, 130, 246)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgb(59, 130, 246)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgb(59, 130, 246)',
+      }] : [])
     ],
   } : null;
 
@@ -70,7 +82,16 @@ const ResultSummaryCard = ({ title, subtitle, dimensionPairs, chartType = 'spect
         }
       }
     },
-    plugins: { legend: { display: false } },
+    plugins: { 
+      legend: { 
+        display: !!cityBaseline && Object.keys(cityBaseline || {}).length > 0,
+        position: 'bottom' as const,
+        labels: {
+          boxWidth: 10,
+          font: { size: 10 }
+        }
+      } 
+    },
   };
 
   return (
@@ -80,20 +101,24 @@ const ResultSummaryCard = ({ title, subtitle, dimensionPairs, chartType = 'spect
         <motion.div
           className="w-20 h-20 mx-auto mb-5 rounded-3xl bg-foreground flex items-center justify-center shadow-lg"
           initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", damping: 12 }}
+          animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0], opacity: 1 }}
+          transition={{ 
+            scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+            rotate: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+            opacity: { duration: 0.5 }
+          }}
         >
           <span className="text-3xl text-background">✦</span>
         </motion.div>
         
         <p className="text-[10px] font-black text-primary tracking-[0.2em] uppercase mb-2 opacity-80">Personality Report</p>
-        <h2 className="font-display font-black text-2xl mb-2 text-foreground leading-tight tracking-tight">{title}</h2>
+        <h2 className="font-display font-black text-2xl mb-2 text-foreground leading-tight tracking-tight whitespace-pre-wrap">{title}</h2>
         <p className="text-muted-foreground text-[13px] max-w-[260px] mx-auto leading-relaxed italic">“{subtitle}”</p>
       </div>
 
       <div className="p-7">
         <h3 className="font-display font-black text-[10px] text-muted-foreground/60 uppercase tracking-widest text-center mb-6">
-          {isRadar ? '人格核心特征雷达图' : '维度倾向分布 (Spectrum)'}
+          {isRadar ? '人格核心特征对比图' : '维度倾向分布 (Spectrum)'}
         </h3>
 
         {isRadar ? (
@@ -141,7 +166,7 @@ const ResultSummaryCard = ({ title, subtitle, dimensionPairs, chartType = 'spect
         ) : null}
         
         <p className="text-[10px] text-center text-muted-foreground mt-6 opacity-50 px-4">
-          {isRadar ? '数值反映了你在各个性格关键维度的原始能量强度' : '数值代表你偏离中立区间的「偏好强度」'}
+          {isRadar ? '数值反映了你在各个性格关键维度的能量对比' : '数值代表你偏离中立区间的「偏好强度」'}
         </p>
       </div>
     </div>

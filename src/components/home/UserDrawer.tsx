@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, Crown, Shield, Settings, LogIn, ChevronRight, ChevronLeft, Gift, 
-  CreditCard, FileText, Bell, HelpCircle, Eye, Moon, User, Star, LogOut
+  FileText, Bell, HelpCircle, Eye, Moon, User, Star, LogOut, Key
 } from "lucide-react";
 import { useQuizStore } from "@/store/useQuizStore";
 import { useState } from "react";
@@ -35,7 +35,7 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed inset-0 z-[70] bg-background max-w-md mx-auto overflow-y-auto no-scrollbar"
+              className="fixed inset-0 z-[100] bg-background max-w-md mx-auto overflow-y-auto no-scrollbar overscroll-contain min-h-screen"
             >
               {/* Solid Header */}
               <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/50 px-6 py-4 flex items-center justify-between">
@@ -96,11 +96,11 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                     <div className="absolute top-[-20%] right-[-10%] w-32 h-32 bg-white/20 blur-2xl rounded-full" />
                     <div className="relative z-10">
                       <div className="flex items-center gap-2 mb-2">
-                        <Crown className="w-5 h-5 fill-white text-yellow-300" />
-                        <span className="text-sm font-bold uppercase tracking-widest">VIP Member Benefits</span>
+                        <Key className="w-5 h-5 text-yellow-300" />
+                        <span className="text-sm font-bold uppercase tracking-widest leading-none">Activate Pro Plan</span>
                       </div>
-                      <h4 className="text-lg font-display font-bold mb-1 text-red-100 italic">解锁 Pro 全部权限</h4>
-                      <p className="text-xs opacity-80 leading-relaxed font-medium">获取高维度人格画像、稀缺度等级及深度改进建议</p>
+                      <h4 className="text-lg font-display font-black mb-1 text-red-100 italic">输入激活码开启深读</h4>
+                      <p className="text-xs opacity-80 leading-relaxed font-medium">获取全部高维度画像、稀缺度等级及深度建议</p>
                     </div>
                     <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 opacity-60" />
                   </motion.div>
@@ -118,7 +118,6 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                         onClick={() => { onClose(); navigate('/history'); }}
                       />
                       <MenuItem icon={Gift} label="福利优惠中心" sub="你有 1 张待领优惠券" badge="New" isMock />
-                      <MenuItem icon={CreditCard} label="支付与订单" isMock />
                     </div>
                   </div>
 

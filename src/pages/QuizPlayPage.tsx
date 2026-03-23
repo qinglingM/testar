@@ -9,12 +9,23 @@ import OptionButton from "@/components/quiz/OptionButton";
 import { getQuizDef } from "@/data/registry";
 import { useQuizStore } from "@/store/useQuizStore";
 import { track } from "@/utils/analytics";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const QuizPlayPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   
   const setAnswer = useQuizStore(state => state.setAnswer);
   const calculateResult = useQuizStore(state => state.calculateResult);
@@ -31,6 +42,19 @@ const QuizPlayPage = () => {
     // Reset question timer when currentIndex changes
     questionStartTime.current = Date.now();
   }, [currentIndex]);
+
+  useEffect(() => {
+    // Prevent back navigation without confirmation
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      window.history.pushState(null, "", window.location.href);
+      setShowExitConfirm(true);
+    };
+
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     if (!quizDef || !question) {
@@ -102,6 +126,7 @@ const QuizPlayPage = () => {
       <Header 
         showBack={true} 
         transparent 
+        onBack={() => setShowExitConfirm(true)}
         rightElement={
           <span className="text-sm font-display font-medium text-muted-foreground bg-muted/30 px-3 py-1 rounded-full border border-border/20">
             {currentIndex + 1} / {questions.length}
@@ -224,6 +249,31 @@ const QuizPlayPage = () => {
           </button>
         </div>
       </div>
+
+      <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <AlertDialogContent className="w-[85vw] max-w-sm rounded-[2rem] p-8 border-none bg-background/95 backdrop-blur-xl shadow-2xl">
+          <AlertDialogHeader className="space-y-4">
+            <div className="mx-auto w-16 h-16 bg-red-500/10 rounded-3xl flex items-center justify-center mb-2">
+               <span className="text-3xl">⚠️</span>
+            </div>
+            <AlertDialogTitle className="text-center text-xl font-bold tracking-tight">确认退出测试吗？</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-sm leading-relaxed text-muted-foreground">
+              当前进度尚未保存，现在退出将丢失已记录的灵魂碎片。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col gap-4 mt-8 items-center justify-center sm:flex-col">
+            <AlertDialogCancel className="w-full py-6 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold text-sm border-none shadow-lg shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center">
+              继续测试
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => navigate('/')}
+              className="w-full bg-transparent hover:bg-transparent text-muted-foreground font-medium text-xs border-none shadow-none transition-all active:scale-[0.95] underline underline-offset-4 flex animate-in items-center justify-center"
+            >
+              坚持退出
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MobileLayout>
   );
 };

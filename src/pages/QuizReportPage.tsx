@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronRight, Heart, Star, Compass, History, Lightbulb, AlertCircle, Share2 } from "lucide-react";
+import { 
+  Share2, ArrowLeft, Heart, Zap, Briefcase, 
+  AlertCircle, Lightbulb, History, Compass, ChevronRight, RotateCcw, Star, Sparkles, User, Target, BarChart3, AlertTriangle
+} from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import Header from "@/components/layout/Header";
 import { ShareModal } from "@/components/quiz/ShareModal";
@@ -36,10 +39,12 @@ const QuizReportPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [showRetestConfirm, setShowRetestConfirm] = useState(false);
 
   const finalResult = useQuizStore(state => state.finalResult);
   const quizDef = slug ? getQuizDef(slug) : null;
   const answers = useQuizStore(state => state.answers);
+  const loadReportFromHistory = useQuizStore(state => state.loadReportFromHistory);
   const rarity = useQuizStore(state => state.rarity);
   const synergyTags = useQuizStore(state => state.synergyTags);
   const dimensionPairs = useQuizStore(state => state.dimensionPairs);
@@ -48,22 +53,34 @@ const QuizReportPage = () => {
   const coreAdvantages = useQuizStore(state => state.coreAdvantages);
   const professionalScores = useQuizStore(state => state.professionalScores);
   const isVip = useQuizStore(state => state.isVip);
+  const careerTips = useQuizStore(state => (state as any).careerTips);
+  const relationshipAdvice = useQuizStore(state => (state as any).relationshipAdvice);
 
   useEffect(() => {
-    if (!quizDef || !finalResult || Object.keys(answers).length === 0) {
+    if (!quizDef || !finalResult) {
        navigate('/');
-    } else {
-       track('report_full_view', {
-         quiz_id: quizDef.id,
-         result_key: finalResult.id || 'default',
-         entry_type: 'purchase' // Assumption for now
-       });
+       return;
+    } 
+
+    if (!isVip) {
+       navigate(`/quiz/${slug}/result`);
+       return;
     }
-  }, [quizDef, finalResult, navigate, answers]);
+
+    track('report_full_view', {
+      quiz_id: quizDef.id,
+      result_key: finalResult.id || 'default',
+      entry_type: 'purchase'
+    });
+  }, [quizDef, finalResult, navigate, answers, isVip, slug]);
 
   if (!quizDef || !finalResult) {
     return <MobileLayout><div className="p-6">Loading...</div></MobileLayout>;
   }
+
+  // Ensure we have the latest cityBaseline even if the stored result is stale
+  const currentResult = quizDef.results.find(r => r.id === finalResult.id) || finalResult;
+  const cityBaseline = currentResult.cityBaseline;
 
   const getAnswerDetail = (qId: string | number) => {
     const q = quizDef.questions.find(q => String(q.id) === String(qId));
@@ -100,16 +117,11 @@ const QuizReportPage = () => {
   return (
     <MobileLayout>
       <Header 
-        title="VIP 深度定制报告" 
+        title="深度探测报告" 
+        onBack={() => navigate('/history')}
         rightElement={
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsShareOpen(true);
-            }} 
-            className="btn-press p-2 text-foreground relative z-50"
-          >
-            <Share2 className="w-5 h-5" />
+          <button className="p-2 btn-press" onClick={() => setIsShareOpen(true)}>
+            <Share2 className="w-5 h-5 text-foreground" />
           </button>
         }
       />
@@ -121,16 +133,24 @@ const QuizReportPage = () => {
           ✓ [假] 已解锁全部私人定制内容
         </div>
         
-        <h1 className="font-display font-extrabold text-[1.8rem] leading-tight text-foreground mb-2">
-          {finalResult.title}
+        <h1 className="font-display font-extrabold text-[1.8rem] leading-tight text-foreground mb-2 whitespace-pre-wrap">
+          {currentResult.title}
         </h1>
         
         <div className="flex flex-wrap justify-center gap-2 mb-6">
-          {synergyTags.map((tag, i) => (
-            <span key={i} className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-lg border border-primary/20 uppercase tracking-wider">
-              {tag.title}
-            </span>
-          ))}
+          {currentResult.cityTags ? (
+             currentResult.cityTags.map((tag, i) => (
+                <span key={i} className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-lg border border-emerald-100 uppercase tracking-wider">
+                  #{tag}
+                </span>
+             ))
+          ) : (
+            synergyTags.map((tag, i) => (
+              <span key={i} className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-lg border border-primary/20 uppercase tracking-wider">
+                {tag.title}
+              </span>
+            ))
+          )}
         </div>
 
         {/* Modular Top Card: Rarity or Population */}
@@ -157,57 +177,59 @@ const QuizReportPage = () => {
         {/* Core Dimensions Plot (Spectrum or Radar) */}
         <div className="mb-8">
           <ResultSummaryCard 
-            title="核心特征维度解析"
-            subtitle="多维数据透视你的性格底色"
+            title={currentResult.title}
+            subtitle={currentResult.subtitle || "多维数据透视你的性格底色"}
             chartType={quizDef.visualization === 'radar' ? 'radar' : 'spectrum'}
             dimensionPairs={dimensionPairs}
             dimensions={quizDef.dimensions}
             scores={professionalScores}
+            cityBaseline={cityBaseline}
           />
         </div>
 
-        {/* 深度交叉特质识别 (Fixed) */}
-        <ReportBlock title="深度交叉特质识别" icon={Star} delay={0.1}>
-          <div className="space-y-4">
-            {synergyTags.map((tag, i) => (
-              <div key={i} className="bg-primary/5 rounded-xl p-5 border border-primary/10 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-2 opacity-5">
-                  <Star className="w-12 h-12" />
-                </div>
-                <h4 className="font-display font-black text-sm text-primary mb-3">【{tag.title}】</h4>
-                <p className="text-xs leading-relaxed text-foreground/90 mb-6 pb-4 border-b border-primary/10 italic">
-                  “{tag.reason}”
-                </p>
-                
-                {tag.q1 && (
-                  <div className="space-y-4 relative">
-                     <div className="absolute left-2 top-0 bottom-0 w-[1.5px] bg-primary/10" />
-                     <div className="pl-6 relative">
-                        <div className="absolute left-0 top-1.5 w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        </div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">关键印证 I</p>
-                        <p className="text-[11px] text-foreground/80 mb-2">{tag.q1}</p>
-                        <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md italic">
-                          选择：{tag.a1}
-                        </span>
-                     </div>
-                     <div className="pl-6 relative">
-                        <div className="absolute left-0 top-1.5 w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        </div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">关键印证 II</p>
-                        <p className="text-[11px] text-foreground/80 mb-2">{tag.q2}</p>
-                        <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md italic">
-                           选择：{tag.a2}
-                        </span>
-                     </div>
+        {synergyTags.length > 0 && (
+          <ReportBlock title="深度交叉特质识别" icon={Star} delay={0.1}>
+            <div className="space-y-4">
+              {synergyTags.map((tag, i) => (
+                <div key={i} className="bg-primary/5 rounded-xl p-5 border border-primary/10 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-2 opacity-5">
+                    <Star className="w-12 h-12" />
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </ReportBlock>
+                  <h4 className="font-display font-black text-sm text-primary mb-3">【{tag.title}】</h4>
+                  <p className="text-xs leading-relaxed text-foreground/90 mb-6 pb-4 border-b border-primary/10 italic">
+                    “{tag.reason}”
+                  </p>
+                  
+                  {tag.q1 && (
+                    <div className="space-y-4 relative">
+                       <div className="absolute left-2 top-0 bottom-0 w-[1.5px] bg-primary/10" />
+                       <div className="pl-6 relative">
+                          <div className="absolute left-0 top-1.5 w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          </div>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">关键印证 I</p>
+                          <p className="text-[11px] text-foreground/80 mb-2">{tag.q1}</p>
+                          <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md italic">
+                            选择：{tag.a1}
+                          </span>
+                       </div>
+                       <div className="pl-6 relative">
+                          <div className="absolute left-0 top-1.5 w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          </div>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">关键印证 II</p>
+                          <p className="text-[11px] text-foreground/80 mb-2">{tag.q2}</p>
+                          <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md italic">
+                             选择：{tag.a2}
+                          </span>
+                       </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ReportBlock>
+        )}
 
         {/* 灵魂两极深度剖析 (Fixed) */}
         {dominantTraits.length > 0 && (
@@ -245,11 +267,113 @@ const QuizReportPage = () => {
           </motion.div>
         )}
 
-        <ReportBlock title="灵魂深度画像" icon={Heart} delay={0.2}>
-          <p className="first-letter:text-2xl first-letter:font-bold first-letter:text-primary first-letter:float-left first-letter:mr-2">
-            {finalResult.description}
-          </p>
-        </ReportBlock>
+        {currentResult.description && (
+          <ReportBlock title={quizDef.id === 'city' ? "主城调性画像" : "灵魂深度画像"} icon={Heart} delay={0.2}>
+            <p className="first-letter:text-2xl first-letter:font-bold first-letter:text-primary first-letter:float-left first-letter:mr-2">
+              {currentResult.description}
+            </p>
+          </ReportBlock>
+        )}
+
+        {/* New: City Feature Slogans (Select one set from three) */}
+        {quizDef.id === 'city' && currentResult.sloganMatrix && (
+          <ReportBlock title="城市五维核心特质" icon={Star} delay={0.25}>
+             <div className="grid grid-cols-1 gap-3">
+                {quizDef.dimensions.map((dim) => {
+                   const slogans = currentResult.sloganMatrix?.[dim.key];
+                   if (!slogans) return null;
+                   // Use score-based modulo to pick 1 of 3 slogans
+                   const score = professionalScores[dim.key] || 0;
+                   const pickedSlogan = slogans[Math.floor(score * 10) % 3];
+                   
+                   return (
+                     <div key={dim.key} className="flex items-center gap-4 p-3 bg-muted/20 rounded-2xl border border-muted/20">
+                        <div className={`w-10 h-10 rounded-xl ${dim.colorClass} flex items-center justify-center text-white font-bold text-[10px] shrink-0`}>
+                           {dim.label.slice(0, 2)}
+                        </div>
+                        <div className="flex flex-col">
+                           <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest leading-none mb-1.5">{dim.label}特色</span>
+                           <p className="text-xs font-bold text-foreground/80 italic">“{pickedSlogan}”</p>
+                        </div>
+                     </div>
+                   );
+                })}
+             </div>
+          </ReportBlock>
+        )}
+
+        {/* New: City Paid Detailed Analysis */}
+        {currentResult.paidAnalysis && (
+           <ReportBlock title="深度宜居决策分析" icon={Compass} delay={0.3}>
+              <div className="space-y-6">
+                 <div>
+                    <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-2 tracking-[0.2em]">为什么适合你</h4>
+                    <p className="text-xs text-foreground/80 leading-relaxed font-medium bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50">
+                       {currentResult.paidAnalysis.whySuits}
+                    </p>
+                 </div>
+                 
+                 <div>
+                    <h4 className="text-[10px] font-black text-rose-500 uppercase mb-2 tracking-[0.2em]">可能感到违和的地方</h4>
+                    <p className="text-xs text-foreground/80 leading-relaxed font-medium bg-rose-50/50 p-4 rounded-2xl border border-rose-100/50">
+                       {currentResult.paidAnalysis.notSuits}
+                    </p>
+                 </div>
+
+                 <div className="p-5 bg-slate-900 rounded-3xl text-white shadow-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                       <Zap className="w-4 h-4 text-yellow-400" />
+                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">未来路径建议</span>
+                    </div>
+                    <p className="text-xs leading-relaxed italic opacity-90 mb-4">
+                       {currentResult.paidAnalysis.futurePath}
+                    </p>
+                    <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                       <span className="text-[10px] text-slate-500 font-bold uppercase">同类人群画像</span>
+                       <span className="text-[10px] text-yellow-400 font-black">{currentResult.paidAnalysis.peers}</span>
+                    </div>
+                 </div>
+              </div>
+           </ReportBlock>
+        )}
+
+        {/* New: PRO 会员深度场景分析 */}
+        {careerTips && careerTips.length > 0 && (
+          <ReportBlock title="职场潜能与避坑指南" icon={Briefcase} delay={0.3}>
+            <div className="space-y-4">
+               {careerTips.map((tip: string, i: number) => (
+                 <div key={i} className="flex gap-3 items-start p-3 bg-red-50/50 rounded-2xl border border-red-100">
+                    <div className="p-1.5 bg-red-100/50 rounded-lg text-red-500">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                    </div>
+                    <p className="text-xs text-foreground/80 leading-relaxed font-medium">
+                      {tip}
+                    </p>
+                 </div>
+               ))}
+               <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 mt-2">
+                  <p className="text-[10px] text-primary font-bold uppercase mb-2 tracking-widest">专家优化建议</p>
+                  <p className="text-xs text-foreground/70 leading-relaxed italic">
+                    “尝试在你的{quizDef.dimensions[0].label}特质与实际业务目标之间建立更直接的量化联系，这能显著提升你的职场溢价。”
+                  </p>
+               </div>
+            </div>
+          </ReportBlock>
+        )}
+
+        {relationshipAdvice && (
+          <ReportBlock title="灵魂交互与人际磁场" icon={Zap} delay={0.3}>
+            <div className="relative">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/40 to-transparent rounded-full" />
+              <div className="pl-5">
+                <p className="text-xs leading-relaxed text-foreground font-medium mb-4">
+                  {relationshipAdvice}
+                </p>
+
+              </div>
+            </div>
+          </ReportBlock>
+        )}
 
         {/* 核心优势库 (Optional Pros & Cons) */}
         <ReportBlock title="核心潜能优势库" icon={Lightbulb} delay={0.2}>
@@ -328,10 +452,17 @@ const QuizReportPage = () => {
           </button>
 
           <button 
-            onClick={() => navigate('/')}
+            onClick={() => setShowRetestConfirm(true)}
+            className="w-full py-4 rounded-2xl bg-white border border-border shadow-sm text-foreground font-bold text-sm btn-press flex items-center justify-center gap-2"
+          >
+            <RotateCcw className="w-4 h-4 text-muted-foreground" /> 再测一次
+          </button>
+
+          <button 
+            onClick={() => navigate('/history')}
             className="w-full py-4 rounded-2xl bg-muted text-muted-foreground font-bold text-sm btn-press flex items-center justify-center gap-2"
           >
-            返回首页 <ChevronRight className="w-4 h-4" />
+            返回探测记录 <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -340,9 +471,48 @@ const QuizReportPage = () => {
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
         quizTitle={quizDef.title}
-        resultTitle={finalResult.title}
+        resultTitle={currentResult.title}
         gradeLabel={grade.label}
       />
+
+      {/* Retest Confirmation Modal */}
+      <AnimatePresence>
+        {showRetestConfirm && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+             <motion.div 
+               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+               onClick={() => setShowRetestConfirm(false)}
+               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+             />
+             <motion.div 
+               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+               className="relative w-full max-w-xs bg-background rounded-[2rem] p-8 shadow-2xl text-center"
+             >
+                <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                   <AlertTriangle className="w-7 h-7" />
+                </div>
+                <h3 className="font-display font-black text-lg mb-3">确定要重新测试吗？</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-8 text-center">
+                   报告仅支持<span className="text-foreground font-bold">单次有效生成</span>。由于报告是唯一的深度解析，重新测试将覆盖当前结果且需使用新的激活码。
+                </p>
+                <div className="space-y-3">
+                  <button 
+                    onClick={() => navigate(`/quiz/${slug}`)}
+                    className="w-full py-3.5 rounded-xl bg-foreground text-background font-display font-bold text-xs btn-press"
+                  >
+                    确定，去获取新激活码
+                  </button>
+                  <button 
+                    onClick={() => setShowRetestConfirm(false)}
+                    className="w-full py-3.5 rounded-xl bg-muted text-foreground font-display font-bold text-xs btn-press"
+                  >
+                    取消，保留报告
+                  </button>
+                </div>
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </MobileLayout>
   );
 };

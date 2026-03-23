@@ -1,15 +1,24 @@
-import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
-import { Users, Clock, Target, Play } from "lucide-react";
+import { Users, Clock, Target, Play, Key, X, Zap, Crown, Check, Sparkles, ChevronRight } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import Header from "@/components/layout/Header";
 import { getQuizDef } from "@/data/registry";
 import { track } from "@/utils/analytics";
+import { useQuizStore } from "@/store/useQuizStore";
+import { toast } from "sonner";
 
 const QuizDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [code, setCode] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  
+  const verifyActivationCode = useQuizStore(state => state.verifyActivationCode);
+  const isVip = useQuizStore(state => state.user?.isVip);
+  const isBaseVip = useQuizStore(state => state.user?.isBaseVip);
 
   const quizDef = slug ? getQuizDef(slug) : null;
 
@@ -33,6 +42,31 @@ const QuizDetailPage = () => {
 
   const { title: quizTitle, subtitle: quizSubtitle, questionsCount, participantsCount } = quizDef;
 
+  const handleStartFinal = () => {
+    if (quizDef) {
+      track('quiz_start', { quiz_id: quizDef.id });
+    }
+    navigate(`/quiz/${slug}/play`);
+  };
+
+  const handleActivation = async () => {
+    if (!code.trim()) {
+      toast.error("请输入激活码以开启测试");
+      return;
+    }
+
+    setIsVerifying(true);
+    const ok = await verifyActivationCode(code);
+    setIsVerifying(false);
+
+    if (ok) {
+      toast.success("验证成功！探测引擎已就绪");
+      handleStartFinal();
+    } else {
+      toast.error("无效的激活码，请检查后再试");
+    }
+  };
+
   return (
     <MobileLayout>
       <Header transparent />
@@ -52,7 +86,6 @@ const QuizDetailPage = () => {
             />
           ) : (
             <>
-              {/* Decorative blur elements inside cover fallback */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 blur-2xl rounded-full" />
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 blur-2xl rounded-full" />
               <span className="text-6xl text-white drop-shadow-md">✧</span>
@@ -70,7 +103,7 @@ const QuizDetailPage = () => {
         >
           <div className="flex gap-2 mb-3">
             <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-[10px] font-semibold text-red-500 uppercase tracking-wider border border-red-100">
-              [假] 心理学专业
+              心理学专业
             </span>
           </div>
           <h1 className="font-display font-extrabold text-[1.75rem] leading-tight mb-2 text-foreground">
@@ -80,7 +113,6 @@ const QuizDetailPage = () => {
             {quizSubtitle}
           </p>
 
-          {/* Stats Row */}
           <div className="flex items-center gap-6 py-4 border-y border-border/50 mb-8">
             <div className="flex flex-col gap-1">
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><Target className="w-3.5 h-3.5" /> 题目数量</span>
@@ -96,11 +128,10 @@ const QuizDetailPage = () => {
             <div className="w-px h-8 bg-border/50" />
             <div className="flex flex-col gap-1">
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><Users className="w-3.5 h-3.5" /> 已测人数</span>
-              <span className="font-display font-bold text-red-500">[假] {participantsCount}</span>
+              <span className="font-display font-bold text-red-500">{participantsCount}</span>
             </div>
           </div>
 
-          {/* Value Prop */}
           <h3 className="font-display font-bold text-sm mb-3 text-foreground">你将获得什么</h3>
           <ul className="space-y-3">
             {(quizDef.valueProps || [
@@ -117,25 +148,104 @@ const QuizDetailPage = () => {
         </motion.div>
       </div>
 
-      {/* Bottom Sticky CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent z-40 max-w-md mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-background via-background to-transparent z-40 max-w-md mx-auto flex justify-center">
         <motion.button
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full py-4 rounded-[1.25rem] bg-foreground text-background font-display font-bold text-[1rem] btn-press flex items-center justify-center gap-2 shadow-lg hover:bg-foreground/90 transition-colors"
+          className="w-1/2 h-20 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 transition-all"
           onClick={() => {
-            if (quizDef) {
-              track('quiz_start', { quiz_id: quizDef.id });
+            if (isVip || isBaseVip) {
+              handleStartFinal();
+            } else {
+              setShowStartModal(true);
             }
-            navigate(`/quiz/${slug}/play`);
           }}
         >
-          <Play className="w-5 h-5 fill-background" />
-          开始测试
+          <Play className="w-5 h-5 fill-white" />
+          <span className="text-lg font-black uppercase tracking-widest text-white">激活</span>
         </motion.button>
       </div>
+
+      <AnimatePresence>
+        {showStartModal && (
+          <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-4 sm:p-0">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowStartModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-md bg-background rounded-[2.5rem] p-8 pt-6 pb-12 shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Key className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-display font-black">激活探测权限</h2>
+                </div>
+                <button 
+                  onClick={() => setShowStartModal(false)}
+                  className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center btn-press"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <p className="text-xs text-muted-foreground leading-relaxed px-1">
+                  为了保证分析报告的客观性与深度，本测试采取邀请激活制。请输入您获取的激活码（基础版或深度版均可）开启探测。
+                </p>
+
+                <div className="space-y-4">
+                    <div className="relative group">
+                      <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                      <input 
+                        type="text"
+                        placeholder="请输入激活码"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        className="w-full h-18 bg-muted/40 border-2 border-border/50 rounded-2xl pl-14 pr-6 font-display font-black text-lg tracking-[0.2em] focus:border-primary focus:bg-background outline-none transition-all uppercase placeholder:tracking-normal placeholder:font-medium"
+                        onKeyDown={(e) => e.key === 'Enter' && handleActivation()}
+                      />
+                    </div>
+                   
+                   <button 
+                     onClick={handleActivation}
+                     disabled={!code.trim() || isVerifying}
+                     className="w-1/2 mx-auto h-20 rounded-[2rem] btn-premium shadow-xl animate-gradient-x disabled:opacity-50 flex items-center justify-center gap-3"
+                   >
+                     {isVerifying ? (
+                        <Clock className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <>
+                          <Sparkles className="w-5 h-5 fill-white" />
+                          <span className="text-lg font-black uppercase tracking-widest">激活</span>
+                        </>
+                      )}
+                   </button>
+                </div>
+
+                <div className="p-4 bg-muted/30 rounded-2xl border border-border/50">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">如何获取激活码？</h4>
+                    <p className="text-[11px] text-muted-foreground leading-tight">
+                      如有疑问，请通过官方渠道获取或关注“探测星”公众号。
+                    </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </MobileLayout>
   );
 };

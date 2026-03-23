@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     is_vip BOOLEAN DEFAULT FALSE,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+    metadata JSONB DEFAULT "{}");
 
 -- 2. Quiz Reports Table (Persistent test results)
 CREATE TABLE IF NOT EXISTS public.quiz_reports (
@@ -42,7 +42,7 @@ ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 -- Allow users to see/edit their own profile
 CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
-
+CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 -- Allow users to see/add their own reports
 CREATE POLICY "Users can view their own reports" ON public.quiz_reports FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own reports" ON public.quiz_reports FOR INSERT WITH CHECK (auth.uid() = user_id);

@@ -1,4 +1,4 @@
-import { Brain, Heart, Zap, Star, Sparkles, Target } from "lucide-react";
+import { Brain, Heart, Zap, Star, Sparkles, Target, Compass } from "lucide-react";
 
 export interface TestMetadata {
   id: string;
@@ -71,5 +71,15 @@ export const ALL_TESTS: TestMetadata[] = [
     participants: "4.1万",
     color: "from-blue-500 to-indigo-400",
     intensity: 65,
+  },
+  {
+    id: "city",
+    title: "梦想城市匹配度",
+    subtitle: "在 30 座顶级名城中，寻找你的灵魂坐标",
+    icon: Compass,
+    questions: 25,
+    participants: "15.8万",
+    color: "from-emerald-500 to-teal-400",
+    intensity: 95,
   }
 ];

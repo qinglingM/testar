@@ -1,152 +1,165 @@
-import { Lock, Sparkles, Loader2, ShieldCheck, Zap, BrainCircuit } from "lucide-react";
+import { Lock, Sparkles, Loader2, ShieldCheck, Zap, BrainCircuit, Key, Check, ArrowUpCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { track } from "@/utils/analytics";
 import { useParams } from "react-router-dom";
+import { useQuizStore } from "@/store/useQuizStore";
+import { toast } from "sonner";
 
 interface UnlockCardProps {
-  price?: string;
-  originalPrice?: string;
-  title?: string;
-  description?: string;
   onUnlock: () => void;
+  isUpgrade?: boolean;
 }
 
-const UnlockCard = ({ 
-  price = "¥9.9",
-  originalPrice = "¥29.9",
-  title = "解锁完整深度报告",
-  description = "获取属于你的 3000 字专属深度解析、优劣势分析及发展建议指南",
-  onUnlock 
-}: UnlockCardProps) => {
-  const [isUnlocking, setIsUnlocking] = useState(false);
-  const [stage, setStage] = useState(0);
-
-  const stages = [
-    { text: "正在加密链路识别...", icon: ShieldCheck },
-    { text: "正在链接云端分析模本...", icon: CloudIcon },
-    { text: "正在合成深度报告参数...", icon: BrainCircuit },
-    { text: "正在开启 VIP 权限通道...", icon: Zap },
-  ];
-
+const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
+  const [isActivating, setIsActivating] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [code, setCode] = useState("");
+  const [success, setSuccess] = useState(false);
+  
+  const verifyCode = useQuizStore(state => state.verifyActivationCode);
   const { slug } = useParams();
 
-  const handleUnlock = () => {
-    if (isUnlocking) return;
-    
-    track('unlock_click', {
-      quiz_id: slug || 'unknown',
-      result_key: 'preview',
-      entry_point: 'result_page'
-    });
+  const handleStartActivation = () => {
+    setIsActivating(true);
+    track('unlock_card_click', { quiz_id: slug, type: isUpgrade ? 'upgrade' : 'full' });
+  };
 
-    setIsUnlocking(true);
+  const handleVerify = async () => {
+    if (!code.trim() || isVerifying) return;
     
-    // Cycle through stages for "vibe"
-    let s = 0;
-    const interval = setInterval(() => {
-      s++;
-      if (s < stages.length) {
-        setStage(s);
-      } else {
-        clearInterval(interval);
+    setIsVerifying(true);
+    const ok = await verifyCode(code);
+    
+    track('verify_activation_code', { code, success: ok, type: isUpgrade ? 'upgrade' : 'full' });
+    
+    if (ok) {
+      setSuccess(true);
+      toast.success(isUpgrade ? "升级成功！已为您解锁全部权益" : "激活成功！正在生成深度报告...");
+      setTimeout(() => {
         onUnlock();
-      }
-    }, 600);
+      }, 1500);
+    } else {
+      toast.error("激活码无效，请检查后重试");
+      setIsVerifying(false);
+    }
   };
 
   return (
     <motion.div 
-      className="glass-card relative overflow-hidden group cursor-pointer border-primary/20 hover:border-primary/50 transition-colors"
-      whileTap={isUnlocking ? {} : { scale: 0.98 }}
-      onClick={handleUnlock}
+      className={`glass-card relative overflow-hidden group border-primary/20 transition-all shadow-xl ${isUpgrade ? 'bg-gradient-to-br from-indigo-50/50 to-primary/5' : ''}`}
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
     >
       <AnimatePresence mode="wait">
-        {!isUnlocking ? (
+        {!isActivating ? (
           <motion.div 
             key="id-pay"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, y: -20 }}
-            className="p-6 relative z-10 flex flex-col items-center text-center"
+            className="p-8 relative z-10 flex flex-col items-center text-center"
+            onClick={handleStartActivation}
           >
-            {/* 背景模糊渐变装饰 */}
-            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors" />
+            <div className={`absolute -right-10 -bottom-10 w-40 h-40 rounded-full blur-3xl group-hover:bg-primary/20 transition-colors ${isUpgrade ? 'bg-indigo-500/10' : 'bg-primary/10'}`} />
             
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4 text-primary">
-              <Lock className="w-5 h-5" />
+            <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 ring-8 transition-transform duration-500 group-hover:scale-110 ${isUpgrade ? 'bg-indigo-500 text-white ring-indigo-500/10' : 'bg-primary/10 text-primary ring-primary/5'}`}>
+              {isUpgrade ? <ArrowUpCircle className="w-7 h-7" /> : <Lock className="w-6 h-6" />}
             </div>
             
-            <h3 className="font-display font-bold text-lg mb-2 text-foreground">{title}</h3>
-            <p className="text-sm text-muted-foreground mb-6 leading-relaxed px-2">
-              {description}
+            <h3 className="font-display font-black text-xl mb-3 text-foreground tracking-tight">
+              {isUpgrade ? '特惠：解锁全量深度解析' : '解锁全量深度报告'}
+            </h3>
+            <p className="text-xs text-muted-foreground mb-8 leading-relaxed px-4 opacity-80">
+              {isUpgrade 
+                ? '您的基础版测试已就绪。输入"差价激活码"即可立即解锁完整 3000 字报告、未来建议及稀缺画像。' 
+                : '内含 3000 字专属灵魂解析、优劣势深度分析、未来 5 年发展建议及稀缺人群画像。'}
             </p>
             
-            <button className="w-full py-3.5 rounded-2xl bg-foreground text-background font-display font-bold text-sm btn-press flex items-center justify-center gap-2 shadow-lg mb-3">
-              <Sparkles className="w-4 h-4 text-primary" />
-              立即解锁 · {price}
-              {originalPrice && (
-                <span className="text-xs font-normal line-through opacity-60 ml-1 block mt-[2px]">{originalPrice}</span>
-              )}
+            <button className={`w-1/2 mx-auto h-20 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 ${isUpgrade ? 'animate-gradient-x' : ''}`}>
+              <Key className="w-5 h-5 text-white" />
+              <span className="text-lg font-black uppercase tracking-widest">{isUpgrade ? '立即解锁' : '激活'}</span>
             </button>
             
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 opacity-70">
-              <Lock className="w-3 h-3" />
-              Secure Payment by TESTAR
-            </p>
+            {isUpgrade && (
+              <div className="mt-4 flex items-center gap-1.5 px-3 py-1 bg-indigo-50 rounded-full border border-indigo-100/50">
+                 <Sparkles className="w-3 h-3 text-indigo-500" />
+                 <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest text-center">基础版用户专属福利：已减免 50%</span>
+              </div>
+            )}
+
+            {!isUpgrade && (
+              <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-black mt-6 opacity-30 flex items-center gap-2">
+                <ShieldCheck className="w-3 h-3" />
+                Testar Cryptography
+              </p>
+            )}
           </motion.div>
         ) : (
           <motion.div 
             key="id-unlocking"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="p-8 relative z-10 flex flex-col items-center text-center min-h-[220px] justify-center"
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="p-8 relative z-10 flex flex-col items-center text-center min-h-[280px] justify-center"
           >
-             <motion.div
-               animate={{ rotate: 360 }}
-               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-               className="mb-4"
-             >
-                <Loader2 className="w-10 h-10 text-primary" />
-             </motion.div>
-             
-             <AnimatePresence mode="wait">
-               <motion.div
-                 key={stage}
-                 initial={{ opacity: 0, y: 10 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 exit={{ opacity: 0, y: -10 }}
+             {success ? (
+               <motion.div 
+                 initial={{ scale: 0.5, opacity: 0 }} 
+                 animate={{ scale: 1, opacity: 1 }}
                  className="flex flex-col items-center"
                >
-                  <div className="text-primary mb-2">
-                    {(() => {
-                        const Icon = stages[stage].icon;
-                        return <Icon className="w-6 h-6" />
-                    })()}
-                  </div>
-                  <p className="text-sm font-display font-bold text-foreground">
-                    {stages[stage].text}
-                  </p>
+                 <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center text-white mb-4 shadow-xl shadow-emerald-500/20">
+                    <Check className="w-10 h-10" strokeWidth={3} />
+                 </div>
+                 <h2 className="text-2xl font-black text-foreground mb-1">解锁成功</h2>
+                 <p className="text-xs text-muted-foreground">正在为您同步全量权益...</p>
                </motion.div>
-             </AnimatePresence>
+             ) : (
+               <>
+                 <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 text-primary">
+                   <Key className="w-6 h-6" />
+                 </div>
+                 
+                 <h3 className="font-display font-black text-lg mb-4">输入您的激活码</h3>
+                 
+                 <div className="w-full relative mb-6">
+                    <input 
+                      type="text"
+                      placeholder={isUpgrade ? "UP-XXXX-XXXX" : "XXXX-XXXX-XXXX"}
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      className="w-full bg-muted/40 border-2 border-border/50 rounded-2xl px-6 py-6 text-center font-display font-black tracking-[0.2em] text-2xl focus:border-primary focus:bg-background outline-none transition-all placeholder:text-muted-foreground placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
+                      onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+                    />
+                 </div>
 
-             {/* Scanning line animation */}
-             <motion.div 
-               animate={{ top: ["0%", "100%", "0%"] }}
-               transition={{ duration: 1.5, repeat: Infinity }}
-               className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent opacity-20 shadow-[0_0_10px_primary]"
-             />
+                  <button 
+                   onClick={handleVerify}
+                   disabled={!code.trim() || isVerifying}
+                   className="w-1/2 mx-auto h-20 rounded-[2rem] btn-premium shadow-2xl animate-gradient-x disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-3"
+                 >
+                  {isVerifying ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <>
+                      <Zap className="w-5 h-5 fill-white text-white" />
+                      <span className="text-lg font-black uppercase tracking-widest">激活</span>
+                    </>
+                  )}
+                </button>
+                
+                <button 
+                  onClick={() => setIsActivating(false)}
+                  className="mt-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors"
+                >
+                  返回上级
+                </button>
+               </>
+             )}
           </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
   );
 };
-
-// Simple cloud icon fallback since lucide doesn't have CloudIcon specifically named in import usually
-const CloudIcon = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17.5 19c.7 0 1.3-.2 1.8-.7s.7-1.1.7-1.8c0-1.4-1.1-2.5-2.5-2.5-.2 0-.4 0-.6.1C16 11.2 13.5 9 10.5 9c-2.8 0-5 2.2-5 5 0 .1 0 .2.1.3C4.2 14.5 3 15.6 3 17c0 1.7 1.3 3 3 3h11.5z"/>
-  </svg>
-);
 
 export default UnlockCard;

@@ -19,9 +19,18 @@ export interface QuizResultRule {
   id: string; // e.g., 'ENFP'
   title: string; // e.g., 'ENFP - 竞选者'
   subtitle: string;
-  description: string;
+  description?: string;
   condition: (scores: Record<DimensionKey, number>) => boolean; 
-  // Function to determine if user matches this result based on their final scores
+  // Custom Metadata (e.g. for City Quiz)
+  cityTags?: string[];
+  sloganMatrix?: Record<DimensionKey, string[]>;
+  cityBaseline?: Record<DimensionKey, number>;
+  paidAnalysis?: {
+    whySuits: string;
+    notSuits: string;
+    futurePath: string;
+    peers: string;
+  };
 }
 
 export interface QuizDefinition {
