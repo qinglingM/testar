@@ -26,6 +26,7 @@ export interface QuizResultRule {
   sloganMatrix?: Record<DimensionKey, string[]>;
   cityBaseline?: Record<DimensionKey, number>;
   paidAnalysis?: {
+    coreDescription: string;
     whySuits: string;
     notSuits: string;
     futurePath: string;
@@ -42,14 +43,14 @@ export interface QuizDefinition {
   coverImage?: string;
   icon?: string;
   questionsCount: number; 
-  participantsCount: string;
+  participantsCount: string | number; // Standardized as string or number
   estimatedMinutes?: number;
   
   // Dimensions this quiz measures
   dimensions: Array<{
     key: DimensionKey;
     label: string; // e.g., '外向性 (E)'
-    colorClass: string;
+    colorClass?: string;
   }>;
   
   questions: QuizQuestion[];
@@ -87,4 +88,6 @@ export interface QuizDefinition {
     topCardType?: 'rarity' | 'population';
     advantageMode?: 'only_pros' | 'both';
   };
+  reportTips?: string[];
+  relationshipAdvice?: string;
 }

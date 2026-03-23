@@ -6,7 +6,7 @@ export interface TestMetadata {
   subtitle: string;
   icon: any;
   questions: number;
-  participants: number; // Changed to number
+  participants: number; // Standardized as raw number
   color: string;
   intensity: number;
 }
@@ -74,8 +74,8 @@ export const ALL_TESTS: TestMetadata[] = [
   },
   {
     id: "city",
-    title: "梦想城市匹配度",
-    subtitle: "在 30 座顶级名城中，寻找你的灵魂坐标",
+    title: "心灵归宿城市测试",
+    subtitle: "在 30 座顶级宜居/旅居名城中，寻找你的灵魂坐标",
     icon: Compass,
     questions: 25,
     participants: 158221,

@@ -1,4 +1,4 @@
-import { Lock, Sparkles, Loader2, ShieldCheck, Zap, Key, ArrowUpCircle, ClipboardPaste } from "lucide-react";
+import { Lock, Sparkles, Loader2, ShieldCheck, Zap, BrainCircuit, Key, Check, ArrowUpCircle, ClipboardPaste, X } from "lucide-react";
 import { CenteredErrorModal } from "@/components/ui/CenteredErrorModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
@@ -106,12 +106,19 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
 
   const handlePaste = async () => {
     try {
+      if (!navigator.clipboard) {
+        toast.error("浏览器不支持剪贴板访问");
+        return;
+      }
       const text = await navigator.clipboard.readText();
       if (text) {
         setCode(text.trim().toUpperCase());
-        toast.success("已从剪贴板粘贴");
+        toast.success("已完成粘贴");
+      } else {
+        toast.info("剪贴板为空");
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error(err);
       toast.error("粘贴失败，请手动输入");
     }
   };
@@ -139,9 +146,9 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
               </div>
               
               <h3 className="font-display font-black text-xl mb-3 text-foreground tracking-tight">
-                {isUpgrade ? '特惠：解锁全量深度解析' : '解锁全量深度报告'}
+                {isUpgrade ? '特惠：升级 MAX 深度解析' : '解锁全量 MAX 深度报告'}
               </h3>
-              <p className="text-xs text-muted-foreground mb-8 leading-relaxed px-4 opacity-80">
+              <p className="text-xs text-muted-foreground mb-8 leading-relaxed px-4 opacity-80 font-bold">
                 {isUpgrade 
                   ? '您的基础版测试已就绪。输入"补差价激活码"即可立即解锁完整 3000 字报告、未来建议及稀缺画像。' 
                   : '内含 3000 字专属灵魂解析、优劣势深度分析、未来 5 年发展建议及稀缺人群画像。'}
@@ -149,7 +156,7 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
               
               <div className={`w-1/2 mx-auto h-16 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 ${isUpgrade ? 'animate-gradient-x' : ''}`}>
                 <Key className="w-5 h-5 text-white" />
-                <span className="text-lg font-black uppercase tracking-widest">{isUpgrade ? '立即解锁' : '激 活'}</span>
+                <span className="text-lg font-black uppercase tracking-widest">{isUpgrade ? '立即升级' : '激 活 MAX'}</span>
               </div>
               
               {isUpgrade && (
@@ -158,20 +165,13 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
                    <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest text-center">基础版用户专属福利：已减免 50%</span>
                 </div>
               )}
-
-              {!isUpgrade && (
-                <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-black mt-6 opacity-30 flex items-center gap-2">
-                  <ShieldCheck className="w-3 h-3" />
-                  TESTSAR CRYPTOGRAPHY
-                </p>
-              )}
             </motion.div>
           ) : (
             <motion.div 
               key="id-unlocking"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="p-8 relative z-10 flex flex-col items-center text-center min-h-[280px] justify-center"
+              className="p-8 relative z-10 flex flex-col items-center text-center min-h-[300px] justify-center"
             >
                {success ? (
                  <motion.div 
@@ -187,52 +187,56 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
                  </motion.div>
                ) : (
                  <>
-                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 text-primary">
+                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 text-primary relative">
                      <Key className="w-6 h-6" />
+                     <button className="absolute -top-10 -right-24 p-2 bg-muted/50 rounded-full opacity-50 hover:opacity-100" onClick={() => setIsActivating(false)}>
+                        <X className="w-4 h-4" />
+                     </button>
                    </div>
                    
-                   <h3 className="font-display font-black text-lg mb-4">输 入 激 活 码</h3>
-                   <div className="w-full flex gap-2 mb-6">
+                   <h3 className="font-display font-black text-lg mb-6 tracking-widest">输 入 激 活 码</h3>
+                   <div className="w-full flex gap-2 mb-8">
                       <div className="relative flex-1 group">
                          <input 
                            type="text"
-                           placeholder={isUpgrade ? "UP-XXXX-XXXX" : "XXXX-XXXX-XXXX"}
+                           placeholder={isUpgrade ? "MAX-UP-XXXX" : "XXXX-XXXX-XXXX"}
                            value={code}
                            onChange={(e) => setCode(e.target.value.toUpperCase())}
-                           className="w-full h-18 bg-muted/30 border-2 border-border/50 rounded-2xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-4 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground placeholder:tracking-normal placeholder:font-medium uppercase"
+                           className="w-full h-22 bg-muted/40 border-2 border-border/50 rounded-3xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground/30 placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
                            onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
                          />
-                         <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                         <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/20 group-focus-within:text-primary transition-colors pointer-events-none" />
                       </div>
                       <button 
                          onClick={handlePaste}
-                         className="w-18 h-18 rounded-2xl bg-muted/40 border-2 border-border/50 flex items-center justify-center text-muted-foreground hover:bg-muted transition-all hover:text-primary active:scale-95"
+                         className="w-22 h-22 rounded-3xl bg-muted/40 border-2 border-border/50 flex items-center justify-center text-muted-foreground hover:bg-muted transition-all hover:text-primary active:scale-95 shadow-sm"
+                         title="粘贴"
                        >
-                         <ClipboardPaste className="w-6 h-6" />
+                         <ClipboardPaste className="w-8 h-8" />
                        </button>
                    </div>
 
                    <button 
                     onClick={handleVerify}
                     disabled={!code.trim() || isVerifying}
-                    className="w-1/2 mx-auto h-16 rounded-[2rem] btn-premium shadow-2xl animate-gradient-x disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-3"
+                    className="w-2/3 mx-auto h-18 rounded-[2rem] btn-premium shadow-2xl animate-gradient-x disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-3"
                   >
                    {isVerifying ? (
-                     <Loader2 className="w-6 h-6 animate-spin" />
+                     <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
                    ) : (
                      <>
-                       <Zap className="w-5 h-5 fill-white text-white" />
-                       <span className="text-lg font-black uppercase tracking-widest">激 活</span>
+                       <Zap className="w-6 h-6 fill-white text-white" />
+                       <span className="text-xl font-black uppercase tracking-widest text-white">激 活 MAX</span>
                      </>
                    )}
-                 </button>
-                 
-                 <button 
-                   onClick={() => setIsActivating(false)}
-                   className="mt-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors"
-                 >
-                   返回上级
-                 </button>
+                  </button>
+                  
+                  <button 
+                    onClick={() => setIsActivating(false)}
+                    className="mt-6 text-[11px] font-black text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors opacity-50"
+                  >
+                    返回报告预览
+                  </button>
                  </>
                )}
             </motion.div>

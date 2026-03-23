@@ -60,7 +60,7 @@ const QuizResultPage = () => {
     <MobileLayout className="bg-muted/30">
       <div id="screenshot-area" className="relative pb-6 bg-background rounded-b-[2.5rem] shadow-sm overflow-hidden mb-6">
         <Header 
-          title="你的测试报告" 
+          title={quizDef?.title || "测试报告"} 
           transparent 
           rightElement={
             <button className="p-2 btn-press" onClick={() => setIsShareOpen(true)}>

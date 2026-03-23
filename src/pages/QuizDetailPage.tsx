@@ -73,12 +73,19 @@ const QuizDetailPage = () => {
 
   const handlePaste = async () => {
     try {
+      if (!navigator.clipboard) {
+        toast.error("浏览器不支持剪贴板访问");
+        return;
+      }
       const text = await navigator.clipboard.readText();
       if (text) {
         setCode(text.trim().toUpperCase());
         toast.info("已从剪贴板粘贴");
+      } else {
+        toast.info("剪贴板为空");
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error(err);
       toast.error("剪贴板访问受限，请手动输入");
     }
   };
@@ -88,11 +95,11 @@ const QuizDetailPage = () => {
       <Header transparent />
       
       {/* Cover Image Area */}
-      <div className="px-6 mt-2 mb-6">
+      <div className="px-6 mt-2 mb-6 text-center">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full aspect-square max-h-[300px] rounded-[2rem] gradient-primary shadow-sm flex items-center justify-center relative overflow-hidden"
+          className="w-full aspect-square max-h-[300px] rounded-[3rem] gradient-primary shadow-2xl flex items-center justify-center relative overflow-hidden mx-auto"
         >
           {quizDef.coverImage ? (
             <img 
@@ -125,7 +132,7 @@ const QuizDetailPage = () => {
           <h1 className="font-display font-extrabold text-[1.75rem] leading-tight mb-2 text-foreground">
             {quizTitle}
           </h1>
-          <p className="text-muted-foreground text-sm leading-relaxed mb-6 italic">
+          <p className="text-muted-foreground text-sm leading-relaxed mb-6 italic font-medium">
             {quizSubtitle}
           </p>
 
@@ -181,7 +188,7 @@ const QuizDetailPage = () => {
           }}
         >
           <Play className="w-5 h-5 fill-white" />
-          <span className="text-lg font-black uppercase tracking-widest text-white">激 活</span>
+          <span className="text-lg font-black uppercase tracking-widest text-white">开 始 探 测</span>
         </motion.button>
       </div>
 
@@ -201,15 +208,18 @@ const QuizDetailPage = () => {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-md bg-background rounded-[2.5rem] p-8 pt-6 pb-12 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-background rounded-[3rem] p-8 pt-6 pb-12 shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <Key className="w-5 h-5" />
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Key className="w-6 h-6" />
                   </div>
-                  <h2 className="text-xl font-display font-black">激活探测权限</h2>
+                  <div>
+                    <h2 className="text-xl font-display font-black">激活探测权限</h2>
+                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">Authentication Required</p>
+                  </div>
                 </div>
                 <button 
                   onClick={() => setShowStartModal(false)}
@@ -219,53 +229,53 @@ const QuizDetailPage = () => {
                 </button>
               </div>
 
-              <div className="space-y-6">
-                <p className="text-xs text-muted-foreground leading-relaxed px-1">
-                  为了保证分析报告的客观性与深度，本测试采取邀请激活制。请输入您获取的激活码（基础版或深度版均可）开启探测。
+              <div className="space-y-8">
+                <p className="text-xs text-muted-foreground leading-relaxed px-1 font-medium italic">
+                  为了保证分析报告的客观性与深度，本测试采取激活制。请输入您获取的激活码开启探测。
                 </p>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                     <div className="flex gap-2">
                        <div className="relative flex-1 group">
                          <input 
                            type="text"
-                           placeholder="请输入激活码"
+                           placeholder="输入激活码"
                            value={code}
                            onChange={(e) => setCode(e.target.value.toUpperCase())}
-                           className="w-full h-18 bg-muted/30 border-2 border-border/50 rounded-2xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-4 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground placeholder:tracking-normal placeholder:font-medium uppercase"
+                           className="w-full h-22 bg-muted/40 border-2 border-border/50 rounded-3xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground/30 placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
                            onKeyDown={(e) => e.key === 'Enter' && handleActivation()}
                          />
-                         <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
+                         <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/20 group-focus-within:text-primary transition-colors pointer-events-none" />
                        </div>
                        <button 
                          onClick={handlePaste}
-                         className="w-18 h-18 rounded-2xl bg-muted/40 border-2 border-border/50 flex items-center justify-center text-muted-foreground hover:bg-muted transition-all hover:text-primary active:scale-95"
+                         className="w-22 h-22 rounded-3xl bg-muted/40 border-2 border-border/50 flex items-center justify-center text-muted-foreground hover:bg-muted transition-all hover:text-primary active:scale-95 shadow-sm"
                          title="粘贴"
                        >
-                         <ClipboardPaste className="w-6 h-6" />
+                         <ClipboardPaste className="w-8 h-8" />
                        </button>
                     </div>
                    
                     <button 
                       onClick={handleActivation}
                       disabled={!code.trim() || isVerifying}
-                      className="w-1/2 mx-auto h-16 rounded-[2rem] btn-premium shadow-xl animate-gradient-x disabled:opacity-50 flex items-center justify-center gap-3"
+                      className="w-2/3 mx-auto h-18 rounded-[2rem] btn-premium shadow-xl animate-gradient-x disabled:opacity-50 flex items-center justify-center gap-3"
                     >
                       {isVerifying ? (
-                         <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                         <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
                        ) : (
                          <>
-                           <Sparkles className="w-5 h-5 fill-white" />
-                           <span className="text-lg font-black uppercase tracking-widest text-white">激 活</span>
+                           <Zap className="w-6 h-6 fill-white text-white" />
+                           <span className="text-xl font-black uppercase tracking-widest text-white">立即激活</span>
                          </>
                        )}
                     </button>
                 </div>
 
-                <div className="p-4 bg-muted/30 rounded-2xl border border-border/50">
+                <div className="p-5 bg-muted/30 rounded-3xl border border-border/50 text-center">
                     <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">如何获取激活码？</h4>
-                    <p className="text-[11px] text-muted-foreground leading-tight">
-                      如有疑问，请通过官方渠道获取或关注“TESTSAR 探测星”公众号。
+                    <p className="text-[11px] text-muted-foreground leading-relaxed font-bold">
+                      关注微信公众号“<span className="text-primary">TESTSAR 探测星</span>”<br/>点击“获取权限”菜单即可领取激活补给。
                     </p>
                 </div>
               </div>
