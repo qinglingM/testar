@@ -316,7 +316,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                   whileTap={{ scale: 0.98 }}
                   disabled={isLoading}
                   onClick={handleNext}
-                  className="w-1/2 group relative h-20 rounded-[2rem] overflow-hidden shadow-2xl shadow-primary/20 transition-all disabled:opacity-50 flex items-center justify-center p-4"
+                  className="w-1/2 group relative h-16 rounded-[2rem] overflow-hidden shadow-2xl shadow-primary/20 transition-all disabled:opacity-50 flex items-center justify-center p-4"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-primary via-red-500 to-indigo-600 animate-gradient-x" />
                   <div className="relative h-full w-full flex items-center justify-center gap-2 text-white font-display font-black text-lg uppercase tracking-widest">

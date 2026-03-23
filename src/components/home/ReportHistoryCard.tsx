@@ -32,11 +32,16 @@ export const ReportHistoryCard = ({ report, onClick }: ReportHistoryCardProps) =
           )}
         </div>
         <div className="truncate">
-          <h4 className="font-display font-bold text-[0.9rem] text-foreground truncate">
+          <h4 className="font-display font-bold text-[0.9rem] text-foreground truncate flex items-center gap-1.5">
             {quizDef?.title || '未知测评'}
+            {report.metadata?.tag && (
+              <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-black">
+                {report.metadata.tag}
+              </span>
+            )}
           </h4>
           <p className="text-[10px] text-muted-foreground mt-0.5 truncate opacity-70">
-            查看我的深度探测数据
+            {report.metadata?.tag ? `第 ${report.metadata.sequence} 次深度探测数据` : '查看我的深度探测数据'}
           </p>
         </div>
       </div>

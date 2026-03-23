@@ -120,17 +120,17 @@ const HistoryPage = () => {
                 
                 <div className="space-y-3">
                   <FilterOption 
-                    label="所有报告" 
+                    label="所有探测" 
                     isActive={filter === 'all'} 
                     onClick={() => { setFilter('all'); setIsFilterOpen(false); }} 
                   />
                   <FilterOption 
-                    label="深度分析 (VIP)" 
+                    label="深度探测 (已激活)" 
                     isActive={filter === 'vip'} 
                     onClick={() => { setFilter('vip'); setIsFilterOpen(false); }} 
                   />
                   <FilterOption 
-                    label="初步画像 (免费)" 
+                    label="基础探测版" 
                     isActive={filter === 'free'} 
                     onClick={() => { setFilter('free'); setIsFilterOpen(false); }} 
                   />

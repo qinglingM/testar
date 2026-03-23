@@ -83,27 +83,13 @@ const QuizPlayPage = () => {
     }
 
     setAnswer(question.id, optionIndex);
-
+    
+    // Auto-advance for all but the last question
     if (currentIndex < questions.length - 1) {
       setDirection(1);
       setTimeout(() => setCurrentIndex(currentIndex + 1), 300);
-    } else {
-      if (quizDef) {
-        const totalSpent = (now - quizStartTime.current) / 1000;
-        track('quiz_complete', {
-          quiz_id: quizDef.id,
-          time_spent: totalSpent, 
-          time_spent_total: totalSpent,
-          result_key: 'pending' // Initial state
-        });
-        
-        // Finalize and save to DB
-        (async () => {
-          await calculateResult(quizDef);
-          navigate(`/quiz/${slug}/analyzing`);
-        })();
-      }
     }
+    // No auto-calculate on last question selection
   };
 
   const handlePrev = () => {

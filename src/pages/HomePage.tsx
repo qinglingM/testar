@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Brain, Heart, Zap, Star, UserCircle } from "lucide-react";
+import { UserCircle } from "lucide-react";
 import logoIcon from "@/assets/logo-icon.png";
 import MobileLayout from "@/components/layout/MobileLayout";
 import QuizCard from "@/components/quiz/QuizCard";
@@ -20,7 +20,6 @@ const HomePage = () => {
   const loadReportFromHistory = useQuizStore(state => state.loadReportFromHistory);
 
   useEffect(() => {
-    // Prevent back navigation from home
     const handlePopState = (e: PopStateEvent) => {
       e.preventDefault();
       window.history.pushState(null, "", window.location.href);
@@ -37,7 +36,6 @@ const HomePage = () => {
     <MobileLayout>
       <UserDrawer isOpen={isUserOpen} onClose={() => setIsUserOpen(false)} />
       
-      {/* Hero section unchanged ... */}
       <section className="relative px-6 pt-14 pb-10 overflow-hidden">
         <div className="absolute top-10 -right-10 w-40 h-40 rounded-full bg-primary/20 blur-3xl" />
         <div className="absolute top-32 -left-10 w-32 h-32 rounded-full bg-accent/20 blur-3xl" />
@@ -79,10 +77,8 @@ const HomePage = () => {
         </motion.div>
       </section>
 
-      {/* Featured / Carousel Banner */}
       <HotTestsCarousel tests={hotTests} />
 
-      {/* Recently Tested (was My Reports) */}
       {completedReports.length > 0 && (
         <section className="mt-8 mb-10 overflow-hidden">
           <div className="px-6 flex items-center justify-between mb-4">
@@ -100,8 +96,8 @@ const HomePage = () => {
                     report={report} 
                     onClick={() => {
                       loadReportFromHistory(report);
-                      const isVip = useQuizStore.getState().user?.isVip;
-                      navigate(`/quiz/${report.quizId}/${isVip ? 'report' : 'result'}`);
+                      const isVipUser = useQuizStore.getState().user?.isVip;
+                      navigate(`/quiz/${report.quizId}/${isVipUser ? 'report' : 'result'}`);
                     }}
                   />
                 </div>
@@ -110,7 +106,6 @@ const HomePage = () => {
         </section>
       )}
 
-      {/* Test Feed */}
       <section className="px-6 pb-20">
         <h2 className="font-display font-bold text-lg mb-4 text-foreground flex items-center gap-2">
           全部测试 <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{ALL_TESTS.length}</span>

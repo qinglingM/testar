@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, Crown, Shield, Settings, LogIn, ChevronRight, ChevronLeft, Gift, 
-  FileText, Bell, HelpCircle, Eye, Moon, User, Star, LogOut, Key
+  FileText, Bell, HelpCircle, Eye, User, Star, LogOut, Key
 } from "lucide-react";
 import { useQuizStore } from "@/store/useQuizStore";
 import { useState } from "react";
@@ -35,7 +35,7 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed inset-0 z-[100] bg-background max-w-md mx-auto overflow-y-auto no-scrollbar overscroll-contain min-h-screen"
+              className="fixed inset-0 z-[100] bg-background max-w-md mx-auto overflow-y-auto no-scrollbar overscroll-contain h-[100dvh]"
             >
               {/* Solid Header */}
               <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/50 px-6 py-4 flex items-center justify-between">
@@ -70,9 +70,9 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                     </h3>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-md ${
-                        user?.isVip ? 'bg-yellow-100 text-yellow-700' : 'bg-red-50 text-red-500'
+                        user?.isVip ? 'bg-yellow-100 text-yellow-700' : 'bg-green-50 text-green-700'
                       }`}>
-                        {user?.isVip ? 'VIP Member' : 'Free Plan'}
+                        {user?.isVip ? 'PRO Member' : 'Standard'}
                       </span>
                       <span className="text-xs text-muted-foreground ml-1">ID: {user ? user.id : '40921-M'}</span>
                     </div>
@@ -99,7 +99,7 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                         <Key className="w-5 h-5 text-yellow-300" />
                         <span className="text-sm font-bold uppercase tracking-widest leading-none">Activate Pro Plan</span>
                       </div>
-                      <h4 className="text-lg font-display font-black mb-1 text-red-100 italic">输入激活码开启深读</h4>
+                      <h4 className="text-lg font-display font-black mb-1 text-red-100 italic whitespace-nowrap">输入激活码开启深读</h4>
                       <p className="text-xs opacity-80 leading-relaxed font-medium">获取全部高维度画像、稀缺度等级及深度建议</p>
                     </div>
                     <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 opacity-60" />
@@ -117,7 +117,13 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                         sub="存储你的所有探测历史数据" 
                         onClick={() => { onClose(); navigate('/history'); }}
                       />
-                      <MenuItem icon={Gift} label="福利优惠中心" sub="你有 1 张待领优惠券" badge="New" isMock />
+                      <MenuItem 
+                        icon={Gift} 
+                        label="福利优惠中心" 
+                        sub="我有 1 张待领优惠券" 
+                        badge="New" 
+                        onClick={() => { onClose(); navigate('/coupons'); }}
+                      />
                     </div>
                   </div>
 
@@ -125,8 +131,13 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                     <SectionTitle label="偏好设置" />
                     <div className="space-y-1">
                       <MenuItem icon={Bell} label="消息通知管理" isMock />
-                      <MenuItem icon={Moon} label="夜间模式" badge="Auto" isMock />
-                      <MenuItem icon={Eye} label="隐私查看限制" sub="保护你的报告隐私" isMock />
+                      <MenuItem icon={Eye} label="隐私查看限制" sub="量子加密策略" onClick={() => { onClose(); navigate('/privacy'); }} />
+                      <MenuItem 
+                        icon={HelpCircle} 
+                        label="帮助与支持" 
+                        sub="联系 TESTSAR 探测星客服" 
+                        isMock 
+                      />
                     </div>
                   </div>
                 </div>
@@ -153,7 +164,7 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                 </div>
                 
                 <p className="text-center text-[10px] text-muted-foreground mt-10 opacity-40 font-medium">
-                  TESTAR ENGINE v1.2.8 ALPHA <br />
+                  TESTSAR ENGINE v1.2.9 PRO <br />
                   POWERED BY QUANTUM PERSPECTIVE
                 </p>
               </div>

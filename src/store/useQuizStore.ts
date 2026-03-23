@@ -275,19 +275,39 @@ export const useQuizStore = create<QuizState>()(
 
           if (error) throw error;
           if (data) {
-            const mappedReports: CompletedReport[] = data.map(db => ({
+            const rawMapped = data.map(db => ({
               id: db.id,
               quizId: db.quiz_id,
-              timestamp: new Date(db.created_at).getTime(),
-              result: db.metadata.result,
-              professionalScores: db.professional_scores,
-              rarity: db.metadata.rarity,
-              synergyTags: db.metadata.synergyTags,
-              dominantTraits: db.metadata.dominantTraits,
-              dimensionPairs: db.metadata.dimensionPairs,
-              coreAdvantages: db.metadata.coreAdvantages,
-              isBalanced: db.metadata.isBalanced
+              timestamp: new Date(db.created_at || Date.now()).getTime(),
+              result: db.metadata?.result || {},
+              professionalScores: db.professional_scores || {},
+              rarity: db.metadata?.rarity || 'Common',
+              synergyTags: db.metadata?.synergyTags || [],
+              dominantTraits: db.metadata?.dominantTraits || [],
+              dimensionPairs: db.metadata?.dimensionPairs || [],
+              coreAdvantages: db.metadata?.coreAdvantages || [],
+              isBalanced: db.metadata?.isBalanced || false,
+              metadata: db.metadata || {}
             }));
+            
+            // Re-order and assign consistent sequences (#01, #02...)
+            const mappedReports = rawMapped
+              .sort((a,b) => a.timestamp - b.timestamp)
+              .map((r, i, all) => {
+                 const matchingSequence = all.slice(0, i+1).filter(prev => prev.quizId === r.quizId).length;
+                 const sequence = r.metadata?.sequence || matchingSequence;
+                 const tag = ` #${String(sequence).padStart(2, '0')}`;
+                 return {
+                    ...r,
+                    metadata: {
+                      ...r.metadata,
+                      sequence,
+                      tag
+                    }
+                 };
+              })
+              .sort((a,b) => b.timestamp - a.timestamp);
+            
             set({ completedReports: mappedReports });
           }
         } catch (e) {
@@ -407,8 +427,23 @@ export const useQuizStore = create<QuizState>()(
           relationshipAdvice: matchedResult.description.length > 50 ? matchedResult.description.slice(0, 50) + "..." : "在一段关系中，你的这种特质往往能成为对方最坚实的后盾。"
         };
 
-        const filteredReports = completedReports.filter(r => r.quizId !== quizDef.id);
-        const allReports = [...filteredReports, newReport];
+        // Determine sequence for repeat tests
+        const matchingReports = completedReports.filter(r => r.quizId === quizDef.id);
+        const sequence = matchingReports.length + 1;
+        const tag = ` #${String(sequence).padStart(2, '0')}`;
+        
+        // Update newReport with sequence info
+        const reportWithSequence = {
+          ...newReport,
+          metadata: {
+            ...newReport.metadata,
+            sequence,
+            tag,
+            isVip: get().isVip || get().isBaseVip // Keep track of VIP status at time of test
+          }
+        };
+
+        const allReports = [...completedReports, reportWithSequence];
 
         set({ 
           finalScores: rawScores,
@@ -443,7 +478,10 @@ export const useQuizStore = create<QuizState>()(
                 coreAdvantages,
                 isBalanced,
                 careerTips: sortedDims.map(d => quizDef.advantageLib?.[d.key]?.shortage).filter(Boolean),
-                relationshipAdvice: "与同类型的灵魂相遇时，你们会瞬间产生共振；而在互补型灵魂面前，你是那个温柔的引领者。"
+                relationshipAdvice: "与同类型的灵魂相遇时，你们会瞬间产生共振；而在互补型灵魂面前，你是那个温柔的引领者。",
+                sequence,
+                tag,
+                isVip: get().isVip || get().isBaseVip
               }
             });
           } catch (e) {

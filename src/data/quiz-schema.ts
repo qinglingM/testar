@@ -31,6 +31,8 @@ export interface QuizResultRule {
     futurePath: string;
     peers: string;
   };
+  behavioralAnalysis?: string; // 200-word deep analysis
+  potentialAnalysis?: string;  // 200-word future path
 }
 
 export interface QuizDefinition {

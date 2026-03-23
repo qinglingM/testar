@@ -58,6 +58,10 @@ export const ShareModal = ({ isOpen, onClose, quizTitle, resultTitle, gradeLabel
              clonedNode.style.borderRadius = '40px';
              clonedNode.style.overflow = 'hidden';
            }
+           
+           // Hide the blur circles that html2canvas renders as hard circles
+           const blurs = clonedDoc.querySelectorAll('.blur-\\[80px\\]');
+           blurs.forEach(b => (b as HTMLElement).style.display = 'none');
         }
       });
 

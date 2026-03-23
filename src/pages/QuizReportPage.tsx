@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
   Share2, ArrowLeft, Heart, Zap, Briefcase, 
-  AlertCircle, Lightbulb, History, Compass, ChevronRight, RotateCcw, Star, Sparkles, User, Target, BarChart3, AlertTriangle
+  AlertCircle, Lightbulb, History, Compass, ChevronRight, RotateCcw, Star, Sparkles, User, Target, BarChart3, AlertTriangle, Filter
 } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import Header from "@/components/layout/Header";
@@ -369,10 +369,31 @@ const QuizReportPage = () => {
                 <p className="text-xs leading-relaxed text-foreground font-medium mb-4">
                   {relationshipAdvice}
                 </p>
-
               </div>
             </div>
           </ReportBlock>
+        )}
+
+        {currentResult.behavioralAnalysis && (
+           <ReportBlock title="深度行为范式解析" icon={Compass} delay={0.35}>
+              <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 relative overflow-hidden">
+                 <div className="absolute top-0 right-0 p-4 opacity-5"><Filter className="w-12 h-12" /></div>
+                 <p className="text-xs leading-relaxed text-foreground/80 font-medium whitespace-pre-wrap">
+                   {currentResult.behavioralAnalysis}
+                 </p>
+              </div>
+           </ReportBlock>
+        )}
+
+        {currentResult.potentialAnalysis && (
+           <ReportBlock title="未来潜能演化路径" icon={Target} delay={0.4}>
+              <div className="p-5 rounded-2xl bg-amber-50/50 border border-amber-100 relative overflow-hidden">
+                 <div className="absolute top-0 right-0 p-4 opacity-5"><Zap className="w-12 h-12" /></div>
+                 <p className="text-xs leading-relaxed text-foreground/80 font-medium whitespace-pre-wrap italic">
+                   {currentResult.potentialAnalysis}
+                 </p>
+              </div>
+           </ReportBlock>
         )}
 
         {/* 核心优势库 (Optional Pros & Cons) */}

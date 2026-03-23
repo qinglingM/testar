@@ -10,6 +10,8 @@ import QuizResultPage from "./pages/QuizResultPage";
 import QuizReportPage from "./pages/QuizReportPage";
 import QuizAnalyzingPage from "./pages/QuizAnalyzingPage";
 import HistoryPage from "./pages/HistoryPage";
+import CouponsPage from "./pages/CouponsPage";
+import PrivacySettingsPage from "./pages/PrivacySettingsPage";
 import NotFound from "./pages/NotFound";
 
 import { useEffect } from "react";
@@ -43,7 +45,21 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+      <Sonner 
+        position="top-center" 
+        duration={1500}
+        toastOptions={{
+          style: {
+            background: '#f0fdf4',
+            color: '#15803d',
+            border: '1px solid #dcfce7',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            borderRadius: '20px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+          }
+        }}
+      />
       <BrowserRouter>
         <AnalyticsTracker />
         <Routes>
@@ -54,6 +70,8 @@ const App = () => (
           <Route path="/quiz/:slug/result" element={<QuizResultPage />} />
           <Route path="/quiz/:slug/report" element={<QuizReportPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/coupons" element={<CouponsPage />} />
+          <Route path="/privacy" element={<PrivacySettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

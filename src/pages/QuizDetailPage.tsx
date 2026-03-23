@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
-import { Users, Clock, Target, Play, Key, X, Zap, Crown, Check, Sparkles, ChevronRight } from "lucide-react";
+import { Users, Clock, Target, Play, Key, X, Zap, Crown, Check, Sparkles, ChevronRight, ClipboardPaste, AlertCircle } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import Header from "@/components/layout/Header";
 import { getQuizDef } from "@/data/registry";
 import { track } from "@/utils/analytics";
 import { useQuizStore } from "@/store/useQuizStore";
 import { toast } from "sonner";
+import { CenteredErrorModal } from "@/components/ui/CenteredErrorModal";
 
 const QuizDetailPage = () => {
   const { slug } = useParams();
@@ -15,6 +16,8 @@ const QuizDetailPage = () => {
   const [showStartModal, setShowStartModal] = useState(false);
   const [code, setCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   
   const verifyActivationCode = useQuizStore(state => state.verifyActivationCode);
   const isVip = useQuizStore(state => state.user?.isVip);
@@ -63,7 +66,20 @@ const QuizDetailPage = () => {
       toast.success("验证成功！探测引擎已就绪");
       handleStartFinal();
     } else {
-      toast.error("无效的激活码，请检查后再试");
+      setErrorMessage("激活码无效，请检查后再试");
+      setShowErrorModal(true);
+    }
+  };
+
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setCode(text.trim().toUpperCase());
+        toast.info("已从剪贴板粘贴");
+      }
+    } catch (err) {
+      toast.error("剪贴板访问受限，请手动输入");
     }
   };
 
@@ -153,7 +169,7 @@ const QuizDetailPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="w-1/2 h-20 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 transition-all"
+          className="w-1/2 h-16 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 transition-all"
           onClick={() => {
             if (isVip || isBaseVip) {
               handleStartFinal();
@@ -207,32 +223,41 @@ const QuizDetailPage = () => {
                 </p>
 
                 <div className="space-y-4">
-                    <div className="relative group">
-                      <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                      <input 
-                        type="text"
-                        placeholder="请输入激活码"
-                        value={code}
-                        onChange={(e) => setCode(e.target.value)}
-                        className="w-full h-18 bg-muted/40 border-2 border-border/50 rounded-2xl pl-14 pr-6 font-display font-black text-lg tracking-[0.2em] focus:border-primary focus:bg-background outline-none transition-all uppercase placeholder:tracking-normal placeholder:font-medium"
-                        onKeyDown={(e) => e.key === 'Enter' && handleActivation()}
-                      />
+                    <div className="flex gap-2">
+                       <div className="relative flex-1 group">
+                         <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                         <input 
+                           type="text"
+                           placeholder="请输入激活码"
+                           value={code}
+                           onChange={(e) => setCode(e.target.value)}
+                           className="w-full h-18 bg-muted/40 border-2 border-border/50 rounded-2xl pl-14 pr-6 font-display font-black text-lg tracking-[0.2em] focus:border-primary focus:bg-background outline-none transition-all uppercase placeholder:tracking-normal placeholder:font-medium shadow-inner"
+                           onKeyDown={(e) => e.key === 'Enter' && handleActivation()}
+                         />
+                       </div>
+                       <button 
+                         onClick={handlePaste}
+                         className="w-18 h-18 rounded-2xl bg-muted/40 border-2 border-border/50 flex items-center justify-center text-muted-foreground hover:bg-muted transition-all hover:text-primary active:scale-95"
+                         title="粘贴"
+                       >
+                         <ClipboardPaste className="w-6 h-6" />
+                       </button>
                     </div>
                    
-                   <button 
-                     onClick={handleActivation}
-                     disabled={!code.trim() || isVerifying}
-                     className="w-1/2 mx-auto h-20 rounded-[2rem] btn-premium shadow-xl animate-gradient-x disabled:opacity-50 flex items-center justify-center gap-3"
-                   >
-                     {isVerifying ? (
-                        <Clock className="w-6 h-6 animate-spin" />
-                      ) : (
-                        <>
-                          <Sparkles className="w-5 h-5 fill-white" />
-                          <span className="text-lg font-black uppercase tracking-widest">激活</span>
-                        </>
-                      )}
-                   </button>
+                    <button 
+                      onClick={handleActivation}
+                      disabled={!code.trim() || isVerifying}
+                      className="w-1/2 mx-auto h-16 rounded-[2rem] btn-premium shadow-xl animate-gradient-x disabled:opacity-50 flex items-center justify-center gap-3"
+                    >
+                      {isVerifying ? (
+                         <Clock className="w-6 h-6 animate-spin" />
+                       ) : (
+                         <>
+                           <Sparkles className="w-5 h-5 fill-white" />
+                           <span className="text-lg font-black uppercase tracking-widest">激活</span>
+                         </>
+                       )}
+                    </button>
                 </div>
 
                 <div className="p-4 bg-muted/30 rounded-2xl border border-border/50">
