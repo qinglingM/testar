@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Lock, ArrowRight, Loader2, User, KeyRound, Sparkles, ChevronLeft, ShieldCheck, Zap, Eye, EyeOff } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuizStore } from "@/store/useQuizStore";
+import { getAuthErrorMessage } from "@/lib/authErrors";
 import { toast } from "sonner";
 
 interface AuthModalProps {
@@ -55,8 +56,13 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     setIsLoading(true);
     try {
       if (isRegister) {
-        await signUp(email, password, nickname);
-        toast.success("注册成功！欢迎加入探测星");
+        const result = await signUp(email, password, nickname);
+
+        if (result.requiresEmailConfirmation) {
+          toast.success("注册成功，请先前往邮箱完成验证");
+        } else {
+          toast.success("注册成功！欢迎加入探测星");
+        }
       } else {
         await login(email, password);
         toast.success("登录成功，欢迎回来");
@@ -65,7 +71,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
       resetState();
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "连接失败，请检查账号密码");
+      toast.error(getAuthErrorMessage(error, isRegister ? "signup" : "login"));
     } finally {
       setIsLoading(false);
     }

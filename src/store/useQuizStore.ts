@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { QuizDefinition, DimensionKey, QuizResultRule } from '@/data/quiz-schema';
 import { supabase } from '@/lib/supabase';
+import { isEmailRateLimitError } from '@/lib/authErrors';
 
 export interface User {
   id: string;
@@ -43,6 +44,10 @@ export interface ActivationVerificationResult {
   effectiveTier?: string;
 }
 
+export interface SignUpResult {
+  requiresEmailConfirmation: boolean;
+}
+
 export interface QuizState {
   user: User | null;
   currentQuizId: string | null;
@@ -75,7 +80,7 @@ export interface QuizState {
   
   // Actions
   login: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, nickname?: string) => Promise<void>;
+  signUp: (email: string, password: string, nickname?: string) => Promise<SignUpResult>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
   startQuiz: (quizId: string) => void;
@@ -169,11 +174,38 @@ export const useQuizStore = create<QuizState>()(
           });
 
           if (error) throw error;
-          if (data.user) {
-             // Auto login after signup
-             await get().login(email, password);
+
+          if (data.user && !data.session) {
+            return {
+              requiresEmailConfirmation: true,
+            };
           }
+
+          if (data.user) {
+            await get().login(email, password);
+          }
+
+          return {
+            requiresEmailConfirmation: false,
+          };
         } catch (e: any) {
+          if (isEmailRateLimitError(e)) {
+            console.warn('[Auth] Public signup rate-limited, falling back to direct signup');
+
+            const { data, error } = await supabase.functions.invoke('direct-signup', {
+              body: { email, password, nickname },
+            });
+
+            if (error) throw error;
+            if (!data?.ok) throw new Error(data?.message || '注册失败，请稍后再试');
+
+            await get().login(email, password);
+
+            return {
+              requiresEmailConfirmation: false,
+            };
+          }
+
           throw e;
         }
       },
