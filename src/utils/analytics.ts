@@ -1,9 +1,9 @@
 import { EventName, EventParams, CommonProperties } from "../types/analytics";
-import { useQuizStore } from "../store/useQuizStore";
 
 // Storage keys
 const DISTINCT_ID_KEY = 'testar_distinct_id';
 const SESSION_ID_KEY = 'testar_session_id';
+const USER_ID_KEY = 'testar_user_id';
 
 // Local cache
 let distinctId = localStorage.getItem(DISTINCT_ID_KEY) || '';
@@ -40,12 +40,13 @@ export const track = <T extends keyof EventParams>(
   params: EventParams[T],
   quizContext?: { id: string; slug?: string; category?: string }
 ) => {
-  const user = useQuizStore.getState().user;
+  // Try to get user_id from localStorage to avoid circular dependency with store
+  const userId = localStorage.getItem(USER_ID_KEY) || (window as any)?.__USER_ID__;
   
   const commonProps: CommonProperties = {
     event_time: Date.now(),
     distinct_id: distinctId,
-    user_id: user?.id,
+    user_id: userId,
     session_id: sessionId,
     page_name: document.title,
     page_path: window.location.pathname,
@@ -55,7 +56,7 @@ export const track = <T extends keyof EventParams>(
     source_channel: new URLSearchParams(window.location.search).get('utm_source') || 'direct',
     device_type: /Mobi|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
     os: navigator.platform,
-    web_version: '1.2.8-alpha' // Sync with package/app version
+    web_version: '1.2.8-beta' // Fixed version
   };
 
   const payload = {
@@ -74,9 +75,6 @@ export const track = <T extends keyof EventParams>(
       payload.properties
     );
   }
-
-  // Future: Send to production API or SDK
-  // fetch('/api/analytics', { method: 'POST', body: JSON.stringify(payload) });
 };
 
 /**

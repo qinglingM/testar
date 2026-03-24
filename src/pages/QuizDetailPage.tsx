@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
-import { Clock, Target, Play, Key, X, Sparkles, ClipboardPaste, Flame } from "lucide-react";
+import { 
+  Clock, Target, Play, Key, X, Sparkles, ClipboardPaste, Flame,
+  ArrowLeft, Share2, Zap, Shield, Compass, Lightbulb, History, Filter, AlertCircle 
+} from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import Header from "@/components/layout/Header";
 import { getQuizDef } from "@/data/registry";
@@ -22,6 +25,19 @@ const QuizDetailPage = () => {
   const verifyActivationCode = useQuizStore(state => state.verifyActivationCode);
   const isVip = useQuizStore(state => state.user?.isVip);
   const isBaseVip = useQuizStore(state => state.user?.isBaseVip);
+  const startQuiz = useQuizStore(state => state.startQuiz);
+  const user = useQuizStore(state => state.user);
+  
+  // Mirror user ID to localStorage for analytics to avoid circular dependency
+  useEffect(() => {
+    if (user?.id) {
+       localStorage.setItem('testar_user_id', user.id);
+       (window as any).__USER_ID__ = user.id;
+    } else {
+       localStorage.removeItem('testar_user_id');
+       (window as any).__USER_ID__ = undefined;
+    }
+  }, [user?.id]);
 
   const quizDef = slug ? getQuizDef(slug) : null;
 
@@ -48,6 +64,7 @@ const QuizDetailPage = () => {
   const handleStartFinal = () => {
     if (quizDef) {
       track('quiz_start', { quiz_id: quizDef.id });
+      startQuiz(quizDef.id);
     }
     navigate(`/quiz/${slug}/play`);
   };
