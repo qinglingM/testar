@@ -9,8 +9,11 @@ export interface User {
   id: string;
   nickname: string;
   avatar?: string;
-  isVip: boolean;      // For PRO
-  isBaseVip: boolean;  // For BASE
+  isVip: boolean;      // For PRO/TPRO
+  isBaseVip: boolean;  // For BASI
+  isTmax: boolean;    // For Yearly TMAX
+  dailyTestCount: number;
+  lastTestDate?: string;
   joinDays: number;
   stats: {
     soulThickness: number;
@@ -40,7 +43,8 @@ export interface ActivationVerificationResult {
   message: string;
   grantedPro?: boolean;
   grantedBase?: boolean;
-  tier?: string;
+  grantedTmax?: boolean;
+  tier?: 'basi' | 'upgd' | 'tpro' | 'tmax';
   effectiveTier?: string;
 }
 
@@ -75,8 +79,10 @@ export interface QuizState {
   careerTips: string[];
   relationshipAdvice: string;
   completedReports: CompletedReport[];
-  isVip: boolean;      // Latest Pro status
-  isBaseVip: boolean;  // Latest Base status
+  isVip: boolean;      
+  isBaseVip: boolean;  
+  isTmax: boolean;
+  dailyTestCount: number;
   
   // Actions
   login: (email: string, password: string) => Promise<void>;
@@ -90,7 +96,8 @@ export interface QuizState {
   loadReportFromHistory: (report: CompletedReport) => void;
   setVip: (value: boolean) => Promise<void>;
   setBaseVip: (value: boolean) => Promise<void>;
-  verifyActivationCode: (code: string) => Promise<ActivationVerificationResult>;
+  verifyActivationCode: (code: string, context?: 'start' | 'upgrade') => Promise<ActivationVerificationResult>;
+  incrementTestUsage: () => Promise<{ ok: boolean; message?: string }>;
   fetchUserHistory: () => Promise<void>;
 }
 
@@ -114,6 +121,8 @@ export const useQuizStore = create<QuizState>()(
       completedReports: [],
       isVip: false,
       isBaseVip: false,
+      isTmax: false,
+      dailyTestCount: 0,
 
       login: async (email, password) => {
         try {
@@ -139,13 +148,22 @@ export const useQuizStore = create<QuizState>()(
               avatar: profile?.avatar_url,
               isVip: profile?.is_vip || false,
               isBaseVip: (profile?.metadata as any)?.is_base_vip || false,
+              isTmax: profile?.is_tmax || false,
+              dailyTestCount: profile?.daily_test_count || 0,
+              lastTestDate: profile?.last_test_date,
               joinDays: Math.ceil((Date.now() - new Date(data.user.created_at).getTime()) / (1000 * 60 * 60 * 24)),
               stats: {
                 soulThickness: 42,
                 completedCount: 1,
               }
             };
-            set({ user, isVip: user.isVip, isBaseVip: user.isBaseVip });
+            set({ 
+              user, 
+              isVip: user.isVip, 
+              isBaseVip: user.isBaseVip,
+              isTmax: user.isTmax,
+              dailyTestCount: user.dailyTestCount
+            });
 
             try {
               await supabase
@@ -288,15 +306,20 @@ export const useQuizStore = create<QuizState>()(
         }
       },
 
-      verifyActivationCode: async (code: string) => {
+      verifyActivationCode: async (code: string, context?: 'start' | 'upgrade') => {
         const state = get();
         const cleanCode = code.trim().toUpperCase();
 
         if (!state.user) {
-          return {
-            ok: false,
-            message: '请先登录后再激活',
-          };
+          return { ok: false, message: '请先登录后再激活' };
+        }
+
+        // Entrance constraints
+        if (context === 'start' && cleanCode.startsWith('UPGD')) {
+          return { ok: false, message: '升级激活码仅限在测试结果页面使用' };
+        }
+        if (context === 'upgrade' && (cleanCode.startsWith('BASI') || cleanCode.startsWith('TPRO'))) {
+          return { ok: false, message: '该激活码仅限在测试开始入口使用' };
         }
 
         try {
@@ -305,42 +328,66 @@ export const useQuizStore = create<QuizState>()(
           });
 
           if (error) {
-            return {
-              ok: false,
-              message: error.message || '激活失败，请稍后再试',
-            };
+            return { ok: false, message: error.message || '激活失败，请稍后重试' };
+          }
+
+          if (!data?.ok) {
+            return { ok: false, message: data?.message || '激活失败' };
           }
 
           const result: ActivationVerificationResult = {
-            ok: Boolean(data?.ok),
-            message: data?.message || '激活失败，请稍后再试',
-            grantedPro: Boolean(data?.granted_pro),
-            grantedBase: Boolean(data?.granted_base),
+            ok: true,
+            message: data?.message || '激活成功',
+            grantedPro: Boolean(data?.is_vip),
+            grantedBase: Boolean(data?.is_base_vip),
+            grantedTmax: Boolean(data?.is_tmax),
             tier: data?.tier,
             effectiveTier: data?.effective_tier,
           };
 
-          if (result.ok) {
-            const nextIsVip = state.isVip || Boolean(result.grantedPro);
-            const nextIsBaseVip = state.isBaseVip || Boolean(result.grantedBase);
+          const nextIsVip = state.isVip || Boolean(result.grantedPro);
+          const nextIsBaseVip = state.isBaseVip || Boolean(result.grantedBase);
+          const nextIsTmax = state.isTmax || Boolean(result.grantedTmax);
 
-            set({
+          set({
+            isVip: nextIsVip,
+            isBaseVip: nextIsBaseVip,
+            isTmax: nextIsTmax,
+            user: state.user ? {
+              ...state.user,
               isVip: nextIsVip,
               isBaseVip: nextIsBaseVip,
-              user: state.user ? {
-                ...state.user,
-                isVip: nextIsVip,
-                isBaseVip: nextIsBaseVip,
-              } : null,
-            });
-          }
+              isTmax: nextIsTmax,
+            } : null,
+          });
 
           return result;
         } catch (e: any) {
-          return {
-            ok: false,
-            message: e?.message || '激活失败，请稍后再试',
-          };
+          return { ok: false, message: e?.message || '激活失败，请稍后重试' };
+        }
+      },
+
+      incrementTestUsage: async () => {
+        const state = get();
+        if (!state.user) return { ok: false };
+        if (!state.isTmax) return { ok: true }; // Not TMAX? Let it pass, they use codes.
+
+        try {
+          const { data, error } = await supabase.functions.invoke('increment-test-usage', {
+            body: { user_id: state.user.id }
+          });
+          
+          if (error) throw error;
+          
+          if (data?.ok) {
+            set({ dailyTestCount: data.count || state.dailyTestCount + 1 });
+            return { ok: true };
+          } else {
+            return { ok: false, message: data?.message || '达到每日限额' };
+          }
+        } catch (e: any) {
+          console.error('[Membership] Error incrementing usage:', e);
+          return { ok: true }; // Fallback to let them test on network error
         }
       },
 

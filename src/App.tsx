@@ -47,16 +47,29 @@ const App = () => (
       <Toaster />
       <Sonner 
         position="top-center" 
-        duration={1500}
+        duration={2000}
         toastOptions={{
           style: {
-            background: '#f0fdf4',
-            color: '#15803d',
-            border: '1px solid #dcfce7',
             fontSize: '14px',
             fontWeight: 'bold',
             borderRadius: '20px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+            border: 'none',
+            padding: '12px 20px'
+          },
+          success: {
+             style: {
+               background: '#f0fdf4',
+               color: '#15803d',
+               border: '1px solid #dcfce7',
+             }
+          },
+          error: {
+             style: {
+               background: '#fef2f2',
+               color: '#b91c1c',
+               border: '1px solid #fee2e2',
+             }
           }
         }}
       />

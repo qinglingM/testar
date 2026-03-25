@@ -23,9 +23,11 @@ const QuizDetailPage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   
   const verifyActivationCode = useQuizStore(state => state.verifyActivationCode);
-  const isVip = useQuizStore(state => state.user?.isVip);
-  const isBaseVip = useQuizStore(state => state.user?.isBaseVip);
+  const isVip = useQuizStore(state => state.isVip);
+  const isBaseVip = useQuizStore(state => state.isBaseVip);
+  const isTmax = useQuizStore(state => state.isTmax);
   const startQuiz = useQuizStore(state => state.startQuiz);
+  const incrementTestUsage = useQuizStore(state => state.incrementTestUsage);
   const user = useQuizStore(state => state.user);
   
   // Mirror user ID to localStorage for analytics to avoid circular dependency
@@ -61,12 +63,19 @@ const QuizDetailPage = () => {
 
   const { title: quizTitle, subtitle: quizSubtitle, questionsCount, participantsCount } = quizDef;
 
-  const handleStartFinal = () => {
+  const handleStartFinal = async () => {
     if (quizDef) {
+      if (isTmax) {
+        const usageResult = await incrementTestUsage();
+        if (!usageResult.ok) {
+          toast.error(usageResult.message || "今日测试额度已用完");
+          return;
+        }
+      }
       track('quiz_start', { quiz_id: quizDef.id });
       startQuiz(quizDef.id);
+      navigate(`/quiz/${slug}/play`);
     }
-    navigate(`/quiz/${slug}/play`);
   };
 
   const handleActivation = async () => {
@@ -76,7 +85,7 @@ const QuizDetailPage = () => {
     }
 
     setIsVerifying(true);
-    const result = await verifyActivationCode(code);
+    const result = await verifyActivationCode(code, 'start');
     setIsVerifying(false);
 
     if (result.ok) {
@@ -88,24 +97,7 @@ const QuizDetailPage = () => {
     }
   };
 
-  const handlePaste = async () => {
-    try {
-      if (!navigator.clipboard) {
-        toast.error("浏览器不支持剪贴板访问");
-        return;
-      }
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        setCode(text.trim().toUpperCase());
-        toast.info("已从剪贴板粘贴");
-      } else {
-        toast.info("剪贴板为空");
-      }
-    } catch (err: any) {
-      console.error(err);
-      toast.error("剪贴板访问受限，请手动输入");
-    }
-  };
+  // Removed handlePaste and associated logic per user request
 
   return (
     <MobileLayout>
@@ -197,7 +189,7 @@ const QuizDetailPage = () => {
           transition={{ delay: 0.3 }}
           className="w-1/2 h-16 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 transition-all"
           onClick={() => {
-            if (isVip || isBaseVip) {
+            if (isTmax || isVip || isBaseVip) {
               handleStartFinal();
             } else {
               setShowStartModal(true);
@@ -252,25 +244,18 @@ const QuizDetailPage = () => {
                 </p>
 
                 <div className="space-y-6">
-                    <div className="flex gap-2">
-                       <div className="relative flex-1 group">
+                    <div className="flex flex-col gap-4">
+                       <div className="relative group">
                          <input 
                            type="text"
                            placeholder="输入激活码"
                            value={code}
                            onChange={(e) => setCode(e.target.value.toUpperCase())}
-                           className="w-full h-22 bg-muted/40 border-2 border-border/50 rounded-3xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground/30 placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
+                           className="w-full h-24 bg-muted/40 border-2 border-border/50 rounded-3xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground/30 placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
                            onKeyDown={(e) => e.key === 'Enter' && handleActivation()}
                          />
                          <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/20 group-focus-within:text-primary transition-colors pointer-events-none" />
                        </div>
-                       <button 
-                         onClick={handlePaste}
-                         className="w-22 h-22 rounded-3xl bg-muted/40 border-2 border-border/50 flex items-center justify-center text-muted-foreground hover:bg-muted transition-all hover:text-primary active:scale-95 shadow-sm"
-                         title="粘贴"
-                       >
-                         <ClipboardPaste className="w-8 h-8" />
-                       </button>
                     </div>
                    
                     <button 

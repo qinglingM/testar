@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Key, Crown, Zap, ShieldCheck, Check, ClipboardPaste } from "lucide-react";
+import { X, Sparkles, Key, Crown, Zap, ShieldCheck, Check } from "lucide-react";
 import { useState } from "react";
 import { useQuizStore } from "@/store/useQuizStore";
 import { track } from "@/utils/analytics";
@@ -39,7 +39,7 @@ const SuccessCelebration = ({ show }: { show: boolean }) => (
              transition={{ delay: 0.4 }}
              className="text-muted-foreground font-bold mt-2 font-display"
            >
-             欢迎来到深度探测纪元 · MAX
+             欢迎来到深度探测纪元 · TMAX
            </motion.p>
            {[...Array(16)].map((_, i) => (
              <motion.div
@@ -87,10 +87,10 @@ const VipPricingModal = ({ isOpen, onClose }: VipPricingModalProps) => {
 
     setIsLoading(true);
     const result = await verifyCode(code.trim());
-    track('verify_activation_code', { code, success: result.ok, context: 'pricing_modal' });
+    track('verify_activation_code', { code, success: result.ok, type: 'pricing_modal' });
 
     if (result.ok) {
-        toast.success(result.message || "激活成功！MAX 权限已开启");
+        toast.success(result.message || "激活成功！TMAX 会员权益已生效");
         setShowSuccess(true);
         setTimeout(() => {
           setShowSuccess(false);
@@ -99,28 +99,9 @@ const VipPricingModal = ({ isOpen, onClose }: VipPricingModalProps) => {
           onClose();
         }, 2200);
     } else {
-      setErrorMessage(result.message || "您输入的激活码似乎并不在我们的星系中，请检查输入或寻找官方补给。");
+      setErrorMessage(result.message || "激活码无效，请检查后再试");
       setShowErrorModal(true);
       setIsLoading(false);
-    }
-  };
-
-  const handlePaste = async () => {
-    try {
-      if (!navigator.clipboard) {
-        toast.error("浏览器不支持剪贴板访问");
-        return;
-      }
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        setCode(text.trim().toUpperCase());
-        toast.success("已完成粘贴");
-      } else {
-        toast.info("剪贴板为空");
-      }
-    } catch (err: any) {
-      console.error(err);
-      toast.error("直接从剪贴板读取失败，请手动输入");
     }
   };
 
@@ -149,8 +130,8 @@ const VipPricingModal = ({ isOpen, onClose }: VipPricingModalProps) => {
                   <Crown className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-display font-black">MAX 全量升级</h2>
-                  <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest opacity-50">Deep Insight Access</p>
+                  <h2 className="text-2xl font-display font-black">TMAX 年费会员</h2>
+                  <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest opacity-50">Annual Membership Access</p>
                 </div>
               </div>
               <button 
@@ -166,7 +147,7 @@ const VipPricingModal = ({ isOpen, onClose }: VipPricingModalProps) => {
               <div className="space-y-10">
                 <div className="p-6 rounded-[2.5rem] bg-gradient-to-br from-primary/10 via-background to-accent/5 border border-primary/10 shadow-inner">
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">MAX Plan Features</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">TMAX Membership Features</span>
                     <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                   </div>
                   <ul className="space-y-4">
@@ -174,60 +155,51 @@ const VipPricingModal = ({ isOpen, onClose }: VipPricingModalProps) => {
                       <div className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
                         <Check className="w-4 h-4 text-emerald-600" />
                       </div>
-                      解锁 3000 字专属深度分析画像
+                      全场测试无需激活码
                     </li>
                     <li className="flex items-center gap-3 text-sm font-bold text-foreground">
                       <div className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
                         <Check className="w-4 h-4 text-emerald-600" />
                       </div>
-                      未来 5-10 年潜能演变路径指导
+                      每日可进行 10 次深度探测
                     </li>
                     <li className="flex items-center gap-3 text-sm font-bold text-foreground">
                       <div className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
                         <Check className="w-4 h-4 text-emerald-600" />
                       </div>
-                      获取全量心理足迹与人群稀缺等级
+                      解锁全部 3000 字深度分析
                     </li>
                   </ul>
                 </div>
 
-                <div className="space-y-4 relative">
-                  <div className="flex gap-2">
-                     <div className="relative flex-1 group">
-                       <input 
-                         type="text"
-                         placeholder="输入 MAX 激活码"
-                         value={code}
-                         onChange={(e) => setCode(e.target.value.toUpperCase())}
-                         className="w-full h-22 bg-muted/40 border-2 border-border/50 rounded-3xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground/30 placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
-                         onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
-                       />
-                       <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/20 group-focus-within:text-primary transition-colors pointer-events-none" />
-                     </div>
-                     <button 
-                       onClick={handlePaste}
-                       className="w-22 h-22 rounded-3xl bg-muted/40 border-2 border-border/50 flex items-center justify-center text-muted-foreground hover:bg-muted transition-all hover:text-primary active:scale-95 shadow-sm"
-                       title="粘贴"
-                     >
-                       <ClipboardPaste className="w-8 h-8" />
-                     </button>
-                  </div>
+                <div className="space-y-6">
+                   <div className="relative group">
+                     <input 
+                       type="text"
+                       placeholder="输入 TMAX 激活码"
+                       value={code}
+                       onChange={(e) => setCode(e.target.value.toUpperCase())}
+                       className="w-full h-24 bg-muted/40 border-2 border-border/50 rounded-3xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground/30 placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
+                       onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+                     />
+                     <Key className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-muted-foreground/20 group-focus-within:text-primary transition-colors pointer-events-none" />
+                   </div>
+                   
+                   <button 
+                     onClick={handleVerify}
+                     disabled={isLoading || !code.trim() || showSuccess}
+                     className="w-full h-20 bg-primary text-white font-display font-black text-xl rounded-2xl shadow-2xl shadow-primary/30 btn-premium animate-gradient-x flex items-center justify-center gap-3 group disabled:opacity-50"
+                   >
+                     {isLoading ? (
+                       <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                     ) : (
+                       <>
+                         <Zap className="w-6 h-6 fill-white group-hover:scale-125 transition-transform" />
+                         立即激活大会员
+                       </>
+                     )}
+                   </button>
                 </div>
-
-                <button 
-                  onClick={handleVerify}
-                  disabled={isLoading || !code.trim() || showSuccess}
-                  className="w-full h-20 bg-primary text-white font-display font-black text-xl rounded-2xl shadow-2xl shadow-primary/30 btn-premium animate-gradient-x flex items-center justify-center gap-3 group disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Zap className="w-6 h-6 fill-white group-hover:scale-125 transition-transform" />
-                      立即激活 MAX 权限
-                    </>
-                  )}
-                </button>
               </div>
             </div>
 
