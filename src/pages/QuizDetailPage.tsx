@@ -12,6 +12,7 @@ import { track } from "@/utils/analytics";
 import { useQuizStore } from "@/store/useQuizStore";
 import { toast } from "sonner";
 import { CenteredErrorModal } from "@/components/ui/CenteredErrorModal";
+import AuthModal from "@/components/home/AuthModal";
 
 const QuizDetailPage = () => {
   const { slug } = useParams();
@@ -21,6 +22,7 @@ const QuizDetailPage = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showAuthModal, setShowAuthModal] = useState(false);
   
   const verifyActivationCode = useQuizStore(state => state.verifyActivationCode);
   const isVip = useQuizStore(state => state.isVip);
@@ -191,6 +193,8 @@ const QuizDetailPage = () => {
           onClick={() => {
             if (isTmax) {
               handleStartFinal();
+            } else if (!user) {
+              setShowAuthModal(true);
             } else {
               setShowStartModal(true);
             }
@@ -280,6 +284,15 @@ const QuizDetailPage = () => {
                       关注微信公众号“<span className="text-primary">TESTSAR 探测星</span>”<br/>点击“获取权限”菜单即可领取激活补给。
                     </p>
                 </div>
+
+                {!user && (
+                  <button 
+                    onClick={() => { setShowStartModal(false); setShowAuthModal(true); }}
+                    className="w-full py-4 rounded-2xl bg-primary/10 text-primary font-black text-sm btn-press border border-primary/20"
+                  >
+                    还没登录？点此快速登录
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -290,6 +303,7 @@ const QuizDetailPage = () => {
         onClose={() => setShowErrorModal(false)}
         message={errorMessage}
       />
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </MobileLayout>
   );
 };
