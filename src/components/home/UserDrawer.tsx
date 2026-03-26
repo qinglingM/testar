@@ -101,18 +101,24 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                   <motion.div 
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setIsVipOpen(true)}
-                    className="btn-premium rounded-3xl p-6 mb-10 text-white relative overflow-hidden btn-press shadow-2xl animate-gradient-x"
+                    className="rounded-3xl p-6 mb-10 text-white relative overflow-hidden btn-press shadow-2xl cursor-pointer"
+                    style={{ background: 'linear-gradient(135deg, #FFD700 0%, #F59E0B 20%, #7C3AED 60%, #6366F1 100%)', backgroundSize: '200% auto', animation: 'gradient-x 4s ease infinite' }}
                   >
-                    <div className="absolute top-[-20%] right-[-10%] w-32 h-32 bg-white/10 blur-2xl rounded-full" />
+                    <div className="absolute top-[-30%] right-[-15%] w-40 h-40 bg-white/15 blur-3xl rounded-full" />
+                    <div className="absolute bottom-[-20%] left-[-10%] w-32 h-32 bg-yellow-200/20 blur-2xl rounded-full" />
                     <div className="relative z-10">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Key className="w-4 h-4 text-yellow-200" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] leading-none">Upgrade to MAX</span>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Crown className="w-5 h-5 text-yellow-200" />
+                        <span className="text-[11px] font-black uppercase tracking-[0.25em] leading-none text-yellow-100">TMAX · 年费大会员</span>
                       </div>
-                      <h4 className="text-xl font-display font-black mb-1 text-white italic whitespace-nowrap">开启全量深度探测权限</h4>
-                      <p className="text-[10px] opacity-80 leading-relaxed font-bold uppercase tracking-widest italic">3000 chars · future suggest · rarity</p>
+                      <h4 className="text-xl font-display font-black mb-2 text-white">全场测试免激活码</h4>
+                      <p className="text-[11px] opacity-90 leading-relaxed font-bold text-white/80">每日 10 次深度探测 · 3000 字报告 · 稀缺画像 · 未来建议</p>
+                      <div className="mt-4 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 border border-white/30">
+                        <Zap className="w-4 h-4 text-yellow-200 fill-yellow-200" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white">立即开通 →</span>
+                      </div>
                     </div>
-                    <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 opacity-60" />
+                    <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 w-6 h-6 opacity-40" />
                   </motion.div>
                 )}
 

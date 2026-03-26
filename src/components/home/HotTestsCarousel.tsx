@@ -78,7 +78,7 @@ export const HotTestsCarousel = ({ tests }: HotTestsCarouselProps) => {
 
   return (
     <section className="px-6 mb-10 select-none">
-      <div className="relative h-[110px] overflow-visible">
+      <div className="relative h-[110px] overflow-hidden">
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={current.id}

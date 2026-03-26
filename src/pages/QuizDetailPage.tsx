@@ -161,7 +161,7 @@ const QuizDetailPage = () => {
             <div className="flex flex-col gap-1">
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1 font-bold"><Flame className="w-3.5 h-3.5 text-orange-500" /> 当前热度</span>
               <span className="font-display font-black text-foreground">
-                {Number(participantsCount).toLocaleString()}
+                {(isNaN(Number(participantsCount)) ? 0 : Number(participantsCount)).toLocaleString()}
               </span>
             </div>
           </div>
@@ -187,9 +187,9 @@ const QuizDetailPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="w-1/2 h-16 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 transition-all"
+          className="w-2/3 mx-auto h-16 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 transition-all"
           onClick={() => {
-            if (isTmax || isVip || isBaseVip) {
+            if (isTmax) {
               handleStartFinal();
             } else {
               setShowStartModal(true);
@@ -248,7 +248,7 @@ const QuizDetailPage = () => {
                        <div className="relative group">
                          <input 
                            type="text"
-                           placeholder="输入激活码"
+                           placeholder="BASI-XXXX-XXXX-XXXX"
                            value={code}
                            onChange={(e) => setCode(e.target.value.toUpperCase())}
                            className="w-full h-24 bg-muted/40 border-2 border-border/50 rounded-3xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground/30 placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
@@ -261,7 +261,7 @@ const QuizDetailPage = () => {
                     <button 
                       onClick={handleActivation}
                       disabled={!code.trim() || isVerifying}
-                      className="w-2/3 mx-auto h-18 rounded-[2rem] btn-premium shadow-xl animate-gradient-x disabled:opacity-50 flex items-center justify-center gap-3"
+                      className="w-2/3 mx-auto h-16 rounded-[2rem] btn-premium shadow-xl animate-gradient-x disabled:opacity-50 flex items-center justify-center gap-3"
                     >
                       {isVerifying ? (
                          <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />

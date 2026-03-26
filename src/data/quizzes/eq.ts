@@ -12,12 +12,12 @@ const spectrumOptions = (posKey: string, negKey: string, weight = 1.0) => [
 
 export const eqQuiz: QuizDefinition = {
   id: 'eq',
-  title: '情商指数深度测评',
+  title: '情商指数测评',
   subtitle: '掌控情绪也是一种超能力，看你的社交智慧与自控力',
   coverImage: eqCover,
   icon: eqIcon,
   questionsCount: 20,
-  participantsCount: '9.1万',
+  participantsCount: 91043,
   estimatedMinutes: 5,
   visualization: 'radar',
   

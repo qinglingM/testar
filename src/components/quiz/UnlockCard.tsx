@@ -129,7 +129,7 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
               </div>
               
               <h3 className="font-display font-black text-xl mb-3 text-foreground tracking-tight">
-                {isUpgrade ? '特惠：升级 MAX 深度解析' : '解锁全量 MAX 深度报告'}
+                {isUpgrade ? '特惠：升级 PRO 深度解析' : '解锁全量 PRO 深度报告'}
               </h3>
               <p className="text-xs text-muted-foreground mb-8 leading-relaxed px-4 opacity-80 font-bold">
                 {isUpgrade 
@@ -137,9 +137,9 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
                   : '内含 3000 字专属灵魂解析、优劣势深度分析、未来 5 年发展建议及稀缺人群画像。'}
               </p>
               
-              <div className={`w-1/2 mx-auto h-16 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 ${isUpgrade ? 'animate-gradient-x' : ''}`}>
+              <div className={`w-2/3 mx-auto h-16 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 ${isUpgrade ? 'animate-gradient-x' : ''}`}>
                 <Key className="w-5 h-5 text-white" />
-                <span className="text-lg font-black uppercase tracking-widest">{isUpgrade ? '立即升级' : '激 活 MAX'}</span>
+                <span className="text-lg font-black uppercase tracking-widest">{isUpgrade ? '立即升级' : '激 活 PRO'}</span>
               </div>
               
               {isUpgrade && (
@@ -182,7 +182,7 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
                       <div className="relative group">
                          <input 
                            type="text"
-                           placeholder={isUpgrade ? "UPGD-UP-XXXX" : "BASI-XXXX-XXXX"}
+                           placeholder={isUpgrade ? "UPGD-XXXX-XXXX-XXXX" : "TPRO-XXXX-XXXX-XXXX"}
                            value={code}
                            onChange={(e) => setCode(e.target.value.toUpperCase())}
                            className="w-full h-24 bg-muted/40 border-2 border-border/50 rounded-3xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground/30 placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
@@ -195,14 +195,14 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
                    <button 
                     onClick={handleVerify}
                     disabled={!code.trim() || isVerifying}
-                    className="w-2/3 mx-auto h-18 rounded-[2rem] btn-premium shadow-2xl animate-gradient-x disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-3"
+                    className="w-2/3 mx-auto h-16 rounded-[2rem] btn-premium shadow-2xl animate-gradient-x disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-3"
                   >
                    {isVerifying ? (
                      <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
                    ) : (
                      <>
                        <Zap className="w-6 h-6 fill-white text-white" />
-                       <span className="text-xl font-black uppercase tracking-widest text-white">激 活 MAX</span>
+                       <span className="text-xl font-black uppercase tracking-widest text-white">激 活 PRO</span>
                      </>
                    )}
                   </button>

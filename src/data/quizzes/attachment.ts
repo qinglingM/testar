@@ -12,12 +12,12 @@ const spectrumOptions = (posKey: string, negKey: string, weight = 1.0) => [
 
 export const attachmentQuiz: QuizDefinition = {
   id: 'love',
-  title: '亲密关系依恋类型',
+  title: '恋爱依恋模式测评',
   subtitle: '你是深情海王，还是焦虑小狗？',
   coverImage: loveCover,
   icon: loveIcon,
   questionsCount: 12,
-  participantsCount: '8.7万',
+  participantsCount: 87412,
   estimatedMinutes: 3,
   visualization: 'radar',
   

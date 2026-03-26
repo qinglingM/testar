@@ -12,12 +12,12 @@ const spectrumOptions = (posKey: string, negKey: string, weight = 1.0) => [
 
 export const careerQuiz: QuizDefinition = {
   id: 'career',
-  title: '职业优势分析 (Holt)',
+  title: '职业优势分析',
   subtitle: '挖掘你的职场隐藏天赋，找到最适合你的位置',
   coverImage: careerCover,
   icon: careerIcon,
   questionsCount: 16,
-  participantsCount: '6.2万',
+  participantsCount: 62158,
   estimatedMinutes: 4,
   visualization: 'spectrum',
   

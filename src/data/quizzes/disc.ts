@@ -9,12 +9,12 @@ const choiceOptions = (scores: Record<string, number>) => [
 
 export const discQuiz: QuizDefinition = {
   id: 'disc',
-  title: 'DISC 行为风格分析',
+  title: 'DISC 行为风格',
   subtitle: '精准定位你的职场能量位阶与核心竞争力',
   coverImage: discCover,
   icon: discIcon,
   questionsCount: 10,
-  participantsCount: '4.1万',
+  participantsCount: 41530,
   estimatedMinutes: 2,
   visualization: 'spectrum',
   

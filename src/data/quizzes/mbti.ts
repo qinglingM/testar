@@ -2,12 +2,12 @@ import { QuizDefinition } from "../quiz-schema";
 
 export const mbtiQuiz: QuizDefinition = {
   id: 'mbti',
-  title: 'MBTI 巡航探测',
+  title: 'MBTI 灵魂探测仪',
   subtitle: '16型人格专业版，探索你的思维底色。',
   icon: 'https://cdn-icons-png.flaticon.com/512/3079/3079204.png',
   coverImage: 'https://images.unsplash.com/photo-1518331647614-7a1f04cd34cf?q=80&w=800&auto=format&fit=crop',
   questionsCount: 16,
-  participantsCount: '1.2M+',
+  participantsCount: 248692,
   estimatedMinutes: 5,
   dimensions: [
     { key: 'E', label: '外向 (Extraversion)', colorClass: 'bg-orange-500' },

@@ -12,12 +12,12 @@ const spectrumOptions = (posKey: string, negKey: string, weight = 1.0) => [
 
 export const enneagramQuiz: QuizDefinition = {
   id: 'enneagram',
-  title: '九型人格性格探索',
+  title: '九型人格专业版',
   subtitle: '深入潜意识的核心，发现你的核心驱动力与恐惧',
   coverImage: enneagramCover,
   icon: enneagramIcon,
   questionsCount: 18,
-  participantsCount: '5.3万',
+  participantsCount: 53289,
   estimatedMinutes: 4,
   visualization: 'radar',
   
