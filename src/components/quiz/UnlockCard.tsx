@@ -170,11 +170,11 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
                  </motion.div>
                ) : (
                  <>
-                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 text-primary relative">
+                   <button className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors" onClick={() => setIsActivating(false)}>
+                      <X className="w-5 h-5 text-muted-foreground" />
+                   </button>
+                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 text-primary">
                      <Key className="w-6 h-6" />
-                     <button className="absolute -top-10 -right-24 p-2 bg-muted/50 rounded-full opacity-50 hover:opacity-100" onClick={() => setIsActivating(false)}>
-                        <X className="w-4 h-4" />
-                     </button>
                    </div>
                    
                    <h3 className="font-display font-black text-lg mb-6 tracking-widest">输 入 激 活 码</h3>
@@ -182,7 +182,7 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
                       <div className="relative group">
                          <input 
                            type="text"
-                           placeholder={isUpgrade ? "UPGD-XXXX-XXXX-XXXX" : "TPRO-XXXX-XXXX-XXXX"}
+                           placeholder="UPGD-XXXX-XXXX-XXXX"
                            value={code}
                            onChange={(e) => setCode(e.target.value.toUpperCase())}
                            className="w-full h-24 bg-muted/40 border-2 border-border/50 rounded-3xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground/30 placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"

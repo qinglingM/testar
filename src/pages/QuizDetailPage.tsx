@@ -248,7 +248,7 @@ const QuizDetailPage = () => {
                        <div className="relative group">
                          <input 
                            type="text"
-                           placeholder="BASI-XXXX-XXXX-XXXX"
+                           placeholder="XXXX-XXXX-XXXX-XXXX"
                            value={code}
                            onChange={(e) => setCode(e.target.value.toUpperCase())}
                            className="w-full h-24 bg-muted/40 border-2 border-border/50 rounded-3xl px-6 text-center font-display font-black tracking-[0.2em] text-xl focus:border-primary focus:bg-background focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-muted-foreground/30 placeholder:tracking-normal placeholder:font-medium uppercase shadow-inner"
