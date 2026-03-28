@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft, History, Filter, Check, X } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import Header from "@/components/layout/Header";
-import { useQuizStore } from "@/store/useQuizStore";
+import { useQuizStore, CompletedReport } from "@/store/useQuizStore";
 import { ReportHistoryCard } from "@/components/home/ReportHistoryCard";
 import { getQuizDef } from "@/data/registry";
 
@@ -26,10 +26,10 @@ const HistoryPage = () => {
 
   const sortedReports = [...completedReports]
     .filter(r => !!getQuizDef(r.quizId))
-    .filter(r => {
+    .filter((r: CompletedReport) => {
       if (filter === 'all') return true;
-      if (filter === 'vip') return (r.metadata as any)?.isVip;
-      if (filter === 'free') return !(r.metadata as any)?.isVip;
+      if (filter === 'vip') return !!r.metadata?.isVipOnSave;
+      if (filter === 'free') return !r.metadata?.isVipOnSave;
       return true;
     })
     .sort((a, b) => b.timestamp - a.timestamp);

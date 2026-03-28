@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Mail, Lock, ArrowRight, Loader2, User, KeyRound, Sparkles, ChevronLeft, ShieldCheck, Zap, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { X, Mail, Lock, ArrowRight, Loader2, User, ChevronLeft, Eye, EyeOff } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuizStore } from "@/store/useQuizStore";
 import { getAuthErrorMessage } from "@/lib/authErrors";
@@ -67,10 +67,11 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
       }
       onClose();
       resetState();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       setHasError(true);
-      toast.error(getAuthErrorMessage(error, isRegister ? "signup" : "login"));
+      const msg = error instanceof Error ? error : { message: String(error) };
+      toast.error(getAuthErrorMessage(msg, isRegister ? "signup" : "login"));
     } finally {
       setIsLoading(false);
     }
