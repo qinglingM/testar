@@ -147,7 +147,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                           placeholder="邮箱地址"
                           value={email}
                           onChange={(e) => { setEmail(e.target.value); setHasError(false); }}
-                          className={`w-full h-18 rounded-2xl pl-14 pr-6 bg-muted/40 border-2 outline-none transition-all font-bold ${hasError && !isEmailValid ? 'border-red-500 bg-red-50/10' : 'border-transparent focus:border-primary focus:bg-background'}`}
+                          className={`w-full h-20 rounded-2xl pl-14 pr-6 bg-muted/40 border-2 outline-none transition-all font-bold ${hasError && !isEmailValid ? 'border-red-500 bg-red-50/10' : 'border-transparent focus:border-primary focus:bg-background'}`}
                         />
                         <Mail className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 ${hasError && !isEmailValid ? 'text-red-500' : 'text-muted-foreground'}`} />
                       </div>
@@ -158,7 +158,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                           value={password}
                           onChange={(e) => { setPassword(e.target.value); setHasError(false); }}
                           onKeyDown={(e) => e.key === 'Enter' && handleNext()}
-                          className={`w-full h-18 rounded-2xl pl-14 pr-12 bg-muted/40 border-2 outline-none transition-all font-bold ${hasError && !isPasswordValid ? 'border-red-500 bg-red-50/10' : 'border-transparent focus:border-primary focus:bg-background'}`}
+                          className={`w-full h-20 rounded-2xl pl-14 pr-12 bg-muted/40 border-2 outline-none transition-all font-bold ${hasError && !isPasswordValid ? 'border-red-500 bg-red-50/10' : 'border-transparent focus:border-primary focus:bg-background'}`}
                         />
                         <Lock className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 ${hasError && !isPasswordValid ? 'text-red-500' : 'text-muted-foreground'}`} />
                         <button onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground">{showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</button>
@@ -176,7 +176,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                             placeholder="example@email.com"
                             value={email}
                             onChange={(e) => { setEmail(e.target.value); setHasError(false); }}
-                            className={`w-full h-18 rounded-2xl pl-14 pr-6 bg-muted/40 border-2 outline-none transition-all font-bold ${hasError && !isEmailValid ? 'border-red-500 bg-red-50/10' : 'border-transparent focus:border-primary focus:bg-background'}`}
+                            className={`w-full h-20 rounded-2xl pl-14 pr-6 bg-muted/40 border-2 outline-none transition-all font-bold ${hasError && !isEmailValid ? 'border-red-500 bg-red-50/10' : 'border-transparent focus:border-primary focus:bg-background'}`}
                           />
                           <Mail className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 ${hasError && !isEmailValid ? 'text-red-500' : 'text-muted-foreground'}`} />
                         </div>
@@ -191,7 +191,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                             placeholder="至少 6 位"
                             value={password}
                             onChange={(e) => { setPassword(e.target.value); setHasError(false); }}
-                            className={`w-full h-18 rounded-2xl pl-14 pr-12 bg-muted/40 border-2 outline-none transition-all font-bold ${hasError && !isPasswordValid ? 'border-red-500 bg-red-50/10' : 'border-transparent focus:border-primary focus:bg-background'}`}
+                            className={`w-full h-20 rounded-2xl pl-14 pr-12 bg-muted/40 border-2 outline-none transition-all font-bold ${hasError && !isPasswordValid ? 'border-red-500 bg-red-50/10' : 'border-transparent focus:border-primary focus:bg-background'}`}
                           />
                           <Lock className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 ${hasError && !isPasswordValid ? 'text-red-500' : 'text-muted-foreground'}`} />
                           <button onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground">{showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</button>
@@ -207,7 +207,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
                             placeholder="探测者昵称"
                             value={nickname}
                             onChange={(e) => { setNickname(e.target.value); setHasError(false); }}
-                            className={`w-full h-18 rounded-2xl pl-14 pr-6 bg-muted/40 border-2 outline-none transition-all font-bold ${hasError && !nickname.trim() ? 'border-red-500 bg-red-50/10' : 'border-transparent focus:border-primary focus:bg-background'}`}
+                            className={`w-full h-20 rounded-2xl pl-14 pr-6 bg-muted/40 border-2 outline-none transition-all font-bold ${hasError && !nickname.trim() ? 'border-red-500 bg-red-50/10' : 'border-transparent focus:border-primary focus:bg-background'}`}
                           />
                           <User className={`absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 ${hasError && !nickname.trim() ? 'text-red-500' : 'text-muted-foreground'}`} />
                         </div>
