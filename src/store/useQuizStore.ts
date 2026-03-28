@@ -125,13 +125,27 @@ export const useQuizStore = create<QuizState>()(
           if (session?.user) {
             await get().refreshProfile();
           } else {
-            // No session? Clear everything.
+            // Authentication lost? Scrub ALL session/private data
             set({ 
               user: null, 
               isVip: false, 
               isBaseVip: false, 
               isTmax: false, 
-              dailyTestCount: 0 
+              dailyTestCount: 0,
+              completedReports: [],
+              answers: {},
+              finalResult: null,
+              finalScores: {},
+              professionalScores: {},
+              rarity: 0,
+              synergyTags: [],
+              dominantTraits: [],
+              dimensionPairs: [],
+              coreAdvantages: [],
+              isBalanced: false,
+              careerTips: [],
+              relationshipAdvice: "",
+              reportSavingStatus: 'idle'
             });
           }
         } catch (e) {
@@ -456,8 +470,6 @@ export const useQuizStore = create<QuizState>()(
           colorLeft: p.colorLeft, colorRight: p.colorRight
         })) || [];
 
-        // Logic for synergyTags, dominantTraits... (keep existing logic but save it carefully)
-        // ... omitted for brevity in chunk but exists in full file ...
         const synergyTags: any[] = [];
         if (quizDef.synergyRules) {
           quizDef.synergyRules.forEach(rule => {

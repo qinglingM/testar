@@ -17,7 +17,6 @@ import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { initAnalytics, trackPageView } from "./utils/analytics";
-import { usePaymentListener } from "./hooks/usePaymentListener";
 import { useQuizStore } from "./store/useQuizStore";
 import { supabase } from "./lib/supabase";
 
@@ -49,16 +48,13 @@ const AnalyticsTracker = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [hydrateSession, refreshProfile]);
 
   useEffect(() => {
     // Tracking page view on every location change
     const pageName = document.title || 'Testar';
     trackPageView(pageName);
   }, [location, user]);
-
-  // Handle global payment success notifications (DISABLED: No on-site checkout)
-  // usePaymentListener();
 
   return null;
 };
