@@ -51,13 +51,11 @@ export const getAuthErrorMessage = (
   }
 
   if (message.includes("email not confirmed")) {
-    return action === "signup"
-      ? "注册成功，请先前往邮箱完成验证后再登录"
-      : "邮箱还没验证，请先去邮箱完成验证";
+    return "账户尚未激活或邮箱格式异常，请联系管理员";
   }
 
   if (message.includes("invalid login credentials")) {
-    return "邮箱或密码不正确";
+    return "邮箱或密码不正确，请重新输入";
   }
 
   if (message.includes("password")) {

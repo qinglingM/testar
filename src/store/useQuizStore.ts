@@ -99,11 +99,56 @@ export interface QuizState {
   verifyActivationCode: (code: string, context?: 'start' | 'upgrade') => Promise<ActivationVerificationResult>;
   incrementTestUsage: () => Promise<{ ok: boolean; message?: string }>;
   fetchUserHistory: () => Promise<void>;
+  syncSession: () => Promise<void>;
 }
 
 export const useQuizStore = create<QuizState>()(
   persist(
     (set, get) => ({
+      syncSession: async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            // Already handled by initial persist load potentially, 
+            // but we fetch fresh profile data to be sure
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            if (profile) {
+              const user: User = {
+                id: session.user.id,
+                nickname: profile.nickname || session.user.email?.split('@')[0] || '探测者',
+                avatar: profile.avatar_url,
+                isVip: profile.is_vip || false,
+                isBaseVip: (profile.metadata as any)?.is_base_vip || false,
+                isTmax: profile.is_tmax || false,
+                dailyTestCount: profile.daily_test_count || 0,
+                lastTestDate: profile.last_test_date,
+                joinDays: Math.ceil((Date.now() - new Date(session.user.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+                stats: {
+                  soulThickness: 42,
+                  completedCount: profile.completed_count || 0,
+                }
+              };
+              set({ 
+                user, 
+                isVip: user.isVip, 
+                isBaseVip: user.isBaseVip,
+                isTmax: user.isTmax,
+                dailyTestCount: user.dailyTestCount
+              });
+            }
+          } else {
+            // No session, clear user but keep result data if necessary (based on your preference)
+            // set({ user: null });
+          }
+        } catch (e) {
+          console.warn('[Supabase] Session sync failed', e);
+        }
+      },
       user: null,
       currentQuizId: null,
       answers: {},
@@ -181,6 +226,7 @@ export const useQuizStore = create<QuizState>()(
 
       signUp: async (email, password, nickname) => {
         try {
+          // 1. Register with Supabase Auth (no email confirmation)
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -193,13 +239,57 @@ export const useQuizStore = create<QuizState>()(
 
           if (error) throw error;
 
-          if (data.user && !data.session) {
-            return {
-              requiresEmailConfirmation: true,
-            };
+          if (!data.user) {
+            throw new Error('注册失败，未能创建用户');
           }
 
-          if (data.user) {
+          // 2. Ensure profiles row exists with nickname
+          try {
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .upsert({
+                id: data.user.id,
+                nickname: nickname || email.split('@')[0],
+                email: email,
+                is_vip: false,
+                is_tmax: false,
+                daily_test_count: 0,
+              }, { onConflict: 'id' });
+
+            if (profileError) {
+              console.warn('[Supabase] Profile creation warning:', profileError.message);
+            }
+          } catch (profileErr) {
+            console.warn('[Supabase] Profile upsert failed, continuing...', profileErr);
+          }
+
+          // 3. Auto-login immediately after registration
+          if (data.session) {
+            // Session already exists, set user state directly
+            const user: User = {
+              id: data.user.id,
+              nickname: nickname || email.split('@')[0],
+              avatar: undefined,
+              isVip: false,
+              isBaseVip: false,
+              isTmax: false,
+              dailyTestCount: 0,
+              lastTestDate: undefined,
+              joinDays: 1,
+              stats: {
+                soulThickness: 42,
+                completedCount: 0,
+              }
+            };
+            set({ 
+              user, 
+              isVip: false, 
+              isBaseVip: false,
+              isTmax: false,
+              dailyTestCount: 0
+            });
+          } else {
+            // No session returned, explicitly login
             await get().login(email, password);
           }
 
@@ -207,30 +297,21 @@ export const useQuizStore = create<QuizState>()(
             requiresEmailConfirmation: false,
           };
         } catch (e: any) {
-          if (isEmailRateLimitError(e)) {
-            console.warn('[Auth] Public signup rate-limited, falling back to direct signup');
-
-            const { data, error } = await supabase.functions.invoke('direct-signup', {
-              body: { email, password, nickname },
-            });
-
-            if (error) throw error;
-            if (!data?.ok) throw new Error(data?.message || '注册失败，请稍后再试');
-
-            await get().login(email, password);
-
-            return {
-              requiresEmailConfirmation: false,
-            };
-          }
-
+          console.error('[SignUp Error]', e);
           throw e;
         }
       },
 
       logout: async () => {
         await supabase.auth.signOut();
-        set({ user: null, isVip: false, isBaseVip: false, completedReports: [] });
+        set({ 
+          user: null, 
+          isVip: false, 
+          isBaseVip: false, 
+          isTmax: false, 
+          dailyTestCount: 0, 
+          completedReports: [] 
+        });
       },
 
       updateProfile: async (updates) => {

@@ -59,13 +59,8 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
     setIsLoading(true);
     try {
       if (isRegister) {
-        const result = await signUp(email, password, nickname);
-
-        if (result.requiresEmailConfirmation) {
-          toast.success("注册成功，请先前往邮箱完成验证");
-        } else {
-          toast.success("注册成功！欢迎加入探测星");
-        }
+        await signUp(email, password, nickname);
+        toast.success("注册成功！欢迎加入探测星");
       } else {
         await login(email, password);
         toast.success("登录成功，欢迎回来");

@@ -18,22 +18,40 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { initAnalytics, trackPageView } from "./utils/analytics";
 import { usePaymentListener } from "./hooks/usePaymentListener";
+import { useQuizStore } from "./store/useQuizStore";
+import { supabase } from "./lib/supabase";
 
 const queryClient = new QueryClient();
 
 // Global Analytics Tracker Component
 const AnalyticsTracker = () => {
   const location = useLocation();
+  const syncSession = useQuizStore(state => state.syncSession);
+  const user = useQuizStore(state => state.user);
 
   useEffect(() => {
     initAnalytics();
+    syncSession();
+
+    // Set up auth listeners
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        syncSession();
+      } else if (event === 'SIGNED_OUT') {
+        useQuizStore.getState().logout();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
     // Tracking page view on every location change
     const pageName = document.title || 'Testar';
     trackPageView(pageName);
-  }, [location]);
+  }, [location, user]);
 
   // Handle global payment success notifications
   usePaymentListener();
@@ -55,21 +73,9 @@ const App = () => (
             borderRadius: '20px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
             border: 'none',
-            padding: '12px 20px'
-          },
-          success: {
-             style: {
-               background: '#f0fdf4',
-               color: '#15803d',
-               border: '1px solid #dcfce7',
-             }
-          },
-          error: {
-             style: {
-               background: '#fef2f2',
-               color: '#b91c1c',
-               border: '1px solid #fee2e2',
-             }
+            padding: '12px 20px',
+            background: '#ffffff',
+            color: '#1e293b'
           }
         }}
       />
