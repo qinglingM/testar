@@ -485,23 +485,28 @@ export const useQuizStore = create<QuizState>()(
         if (context === 'upgrade' && (cleanCode.startsWith('BASI') || cleanCode.startsWith('TPRO'))) return { ok: false, message: '该码仅限在入口处使用' };
 
         try {
-          const { data, error } = await supabase.functions.invoke('verify-activation-code', {
-            body: { code: cleanCode },
+          const session = (await supabase.auth.getSession()).data.session;
+          if (!session) return { ok: false, message: '请先登录' };
+
+          // NATIVE FETCH BYPASS: Directly call the function to bypass SDK interceptors
+          const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const functionUrl = `${baseUrl}/functions/v1/verify-activation-code`;
+          const response = await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+              'apikey': (supabase as any).supabaseAnonKey || (import.meta.env.VITE_SUPABASE_ANON_KEY),
+            },
+            body: JSON.stringify({ code: cleanCode }),
           });
 
-          // DEBUG LOG - Help the user see what's actually happening
-          console.log('[DEBUG] Activation Result:', { data, error });
-
-          if (error) {
-            // Extract error body if available
-            const errMsg = error.message === 'Edge Function returned a non-2xx status code' 
-              ? '后端函数执行异常 (500/CORS)，请检查 Supabase 控制台日志' 
-              : (error?.context?.message || error?.message || '激活请求失败');
-            return { ok: false, message: errMsg };
-          }
+          const data = await response.json().catch(() => ({ ok: false, message: '响应解析失败' }));
           
-          if (!data || !data.ok) {
-            return { ok: false, message: data?.message || '激活码可能已失效，请联系客服' };
+          console.log('[DEBUG] Native Fetch Result:', { status: response.status, data });
+
+          if (!response.ok || !data.ok) {
+            return { ok: false, message: data?.message || `后端解析异常 (${response.status})` };
           }
 
           await get().refreshProfile();
@@ -513,7 +518,7 @@ export const useQuizStore = create<QuizState>()(
             effectiveTier: data?.effective_tier as string,
           };
         } catch (e: unknown) {
-          console.error('[Membership] Activation Exception', e);
+          console.error('[Membership] Native Fetch Exception', e);
           const msg = e instanceof Error ? e.message : '系統繁忙，請稍後重試';
           return { ok: false, message: msg };
         }
