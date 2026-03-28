@@ -7,17 +7,16 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // 1. Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // 2. Only allow POST
   if (req.method !== "POST") {
     return new Response(
       JSON.stringify({ ok: false, message: "Method not allowed" }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 405,
-      },
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 405 }
     );
   }
 
@@ -28,82 +27,77 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
 
     if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
-      throw new Error("Supabase environment variables are not configured");
-    }
-
-    if (!authHeader) {
       return new Response(
-        JSON.stringify({ ok: false, message: "请先登录后再激活" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 401,
-        },
+        JSON.stringify({ ok: false, message: "Supabase environment variables are missing" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
 
-    const { code } = await req.json();
-
-    if (typeof code !== "string" || !code.trim()) {
+    // 3. Authenticate User
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ ok: false, message: "请输入激活码" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        },
+        JSON.stringify({ ok: false, message: "请先登录后再进行激活" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const code = body.code;
+
+    if (!code || typeof code !== "string" || !code.trim()) {
+      return new Response(
+        JSON.stringify({ ok: false, message: "激活码格式不正确" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: authHeader,
-        },
-      },
+      global: { headers: { Authorization: authHeader } },
     });
 
-    const {
-      data: { user },
-      error: userError,
-    } = await userClient.auth.getUser();
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
 
     if (userError || !user) {
       return new Response(
-        JSON.stringify({ ok: false, message: "登录状态已失效，请重新登录" }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 401,
-        },
+        JSON.stringify({ ok: false, message: "登录态失效，请重新登录" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
       );
     }
 
+    // 4. Exec RPC with Admin Privileges
     const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey);
-    const { data, error } = await adminClient.rpc("redeem_activation_code", {
+    const { data, error: rpcError } = await adminClient.rpc("redeem_activation_code", {
       p_user_id: user.id,
-      p_code: code,
+      p_code: code.trim(),
     });
 
-    if (error) {
-      throw error;
+    // CRITICAL: Handle RPC errors as 200 responses with status if they are business logic errors
+    if (rpcError) {
+      console.error("[RPC Error]", rpcError);
+      return new Response(
+        JSON.stringify({ 
+          ok: false, 
+          message: rpcError.message || "激活码核銷失敗，請聯繫客服",
+          detail: rpcError.details 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 } // Return 200 so frontend can show message
+      );
     }
 
-    return new Response(
-      JSON.stringify(
-        data ?? { ok: false, message: "激活失败，请稍后重试" },
-      ),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      },
-    );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "未知错误";
+    const payload = data || { ok: false, message: "激活失敗，激活碼可能已失效" };
 
     return new Response(
+      JSON.stringify(payload),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+    );
+
+  } catch (error) {
+    console.error("[Server Error]", error);
+    const message = error instanceof Error ? error.message : "Internal Server Error";
+    
+    return new Response(
       JSON.stringify({ ok: false, message }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      },
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
 });

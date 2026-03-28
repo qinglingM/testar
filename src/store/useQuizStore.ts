@@ -489,8 +489,13 @@ export const useQuizStore = create<QuizState>()(
             body: { code: cleanCode },
           });
 
-          if (error) throw error;
-          if (!data?.ok) return { ok: false, message: data?.message || '激活失败' };
+          if (error) {
+            // Some error types already have a message, otherwise fallback
+            const errMsg = error?.context?.message || error?.message || '激活请求失败，请稍后重试';
+            return { ok: false, message: errMsg };
+          }
+          
+          if (!data || !data.ok) return { ok: false, message: data?.message || '激活码可能已失效，请联系客服' };
 
           await get().refreshProfile();
 
@@ -501,7 +506,8 @@ export const useQuizStore = create<QuizState>()(
             effectiveTier: data?.effective_tier as string,
           };
         } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : '系统繁忙，请稍后刷新重试';
+          console.error('[Membership] Activation error', e);
+          const msg = e instanceof Error ? e.message : '系統繁忙，請稍後刷新重試';
           return { ok: false, message: msg };
         }
       },
