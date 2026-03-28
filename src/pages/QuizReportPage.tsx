@@ -38,6 +38,58 @@ const ReportBlock = ({ title, icon: Icon, children, delay = 0 }: ReportBlockProp
   </motion.div>
 );
 
+interface CollapsibleAnalysisCardProps {
+  content: string;
+  accent: string;
+  bgClass: string;
+  borderClass: string;
+  iconElement: React.ReactNode;
+  isItalic?: boolean;
+}
+
+const CollapsibleAnalysisCard = ({ content, accent, bgClass, borderClass, iconElement, isItalic }: CollapsibleAnalysisCardProps) => {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = content.length > 200;
+
+  return (
+    <div className={`relative rounded-3xl border overflow-hidden group ${bgClass} ${borderClass}`}>
+      {/* Decorative background icon */}
+      <div className="absolute -top-2 -right-2 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity pointer-events-none">
+        {iconElement}
+      </div>
+      
+      {/* Accent left bar */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${accent === 'primary' ? 'bg-primary/40' : 'bg-amber-400/40'} rounded-full`} />
+      
+      <div className="p-6 pl-7">
+        {/* First paragraph highlight */}
+        <div className={`text-sm leading-[1.9] text-foreground/85 font-medium whitespace-pre-wrap ${isItalic ? 'italic' : ''} ${!expanded && isLong ? 'line-clamp-5' : ''}`}>
+          {content}
+        </div>
+
+        {/* Gradient fade overlay when collapsed */}
+        {!expanded && isLong && (
+          <div className={`absolute bottom-0 left-0 right-0 h-24 ${accent === 'primary' ? 'bg-gradient-to-t from-white via-white/80 to-transparent' : 'bg-gradient-to-t from-amber-50 via-amber-50/80 to-transparent'} pointer-events-none`} />
+        )}
+      </div>
+
+      {/* Expand/Collapse toggle */}
+      {isLong && (
+        <button 
+          onClick={() => setExpanded(!expanded)}
+          className={`relative z-10 w-full py-3 text-center text-xs font-black uppercase tracking-widest transition-colors ${
+            accent === 'primary' 
+              ? 'text-primary hover:bg-primary/10' 
+              : 'text-amber-600 hover:bg-amber-100/50'
+          } ${!expanded ? '-mt-4' : 'border-t border-border/20'}`}
+        >
+          {expanded ? '收起内容 ↑' : '展开全部 ↓'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 const QuizReportPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -164,15 +216,16 @@ const QuizReportPage = () => {
           </ReportBlock>
         )}
 
-        {/* Behavioral Analysis Styling Update */}
+        {/* Behavioral Analysis - Collapsible & Beautiful */}
         {currentResult.behavioralAnalysis && (
           <ReportBlock title="核心行为模式深度解构" icon={Compass} delay={0.2}>
-             <div className="p-6 rounded-3xl bg-primary/5 border border-primary/10 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Filter className="w-16 h-16" /></div>
-                <p className="text-[13px] leading-relaxed text-foreground font-medium whitespace-pre-wrap">
-                  {currentResult.behavioralAnalysis}
-                </p>
-             </div>
+             <CollapsibleAnalysisCard
+               content={currentResult.behavioralAnalysis}
+               accent="primary"
+               bgClass="bg-gradient-to-br from-primary/5 via-background to-primary/10"
+               borderClass="border-primary/15"
+               iconElement={<Filter className="w-20 h-20" />}
+             />
           </ReportBlock>
         )}
 
@@ -180,12 +233,14 @@ const QuizReportPage = () => {
 
         {currentResult.potentialAnalysis && (
           <ReportBlock title="未来 5-10 年潜能演变路径" icon={Target} delay={0.3}>
-             <div className="p-6 rounded-3xl bg-amber-50/50 border border-amber-100 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Zap className="w-16 h-16" /></div>
-                <p className="text-[13px] leading-relaxed text-foreground font-medium whitespace-pre-wrap italic">
-                  {currentResult.potentialAnalysis}
-                </p>
-             </div>
+             <CollapsibleAnalysisCard
+               content={currentResult.potentialAnalysis}
+               accent="amber"
+               bgClass="bg-gradient-to-br from-amber-50/60 via-background to-orange-50/40"
+               borderClass="border-amber-200/50"
+               iconElement={<Zap className="w-20 h-20" />}
+               isItalic
+             />
           </ReportBlock>
         )}
 
