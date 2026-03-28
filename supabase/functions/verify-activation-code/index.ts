@@ -25,7 +25,12 @@ Deno.serve(async (req) => {
     };
 
     // 1. Get userId using the auth JWT from the client
-    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { Authorization: authHeader } });
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, { 
+      headers: { 
+        Authorization: authHeader,
+        apikey: supabaseServiceKey 
+      } 
+    });
     if (!userRes.ok) throw new Error("登录状态已失效，请尝试重新登录并使用");
     const userId = (await userRes.json()).id;
 
