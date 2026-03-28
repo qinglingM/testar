@@ -26,19 +26,23 @@ const queryClient = new QueryClient();
 // Global Analytics Tracker Component
 const AnalyticsTracker = () => {
   const location = useLocation();
-  const syncSession = useQuizStore(state => state.syncSession);
+  const hydrateSession = useQuizStore(state => state.hydrateSession);
+  const refreshProfile = useQuizStore(state => state.refreshProfile);
   const user = useQuizStore(state => state.user);
 
   useEffect(() => {
     initAnalytics();
-    syncSession();
+    
+    // 1. Initial hydration on app load
+    hydrateSession();
 
-    // Set up auth listeners
+    // 2. Continuous Sync via Auth Listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        syncSession();
-      } else if (event === 'SIGNED_OUT') {
-        useQuizStore.getState().logout();
+        refreshProfile(); // Ensure fresh membership data
+      }
+      if (event === 'SIGNED_OUT') {
+        hydrateSession(); // Will clear user/membership from store
       }
     });
 
@@ -53,8 +57,8 @@ const AnalyticsTracker = () => {
     trackPageView(pageName);
   }, [location, user]);
 
-  // Handle global payment success notifications
-  usePaymentListener();
+  // Handle global payment success notifications (DISABLED: No on-site checkout)
+  // usePaymentListener();
 
   return null;
 };

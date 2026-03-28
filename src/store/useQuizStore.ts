@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { QuizDefinition, DimensionKey, QuizResultRule } from '@/data/quiz-schema';
 import { supabase } from '@/lib/supabase';
-import { isEmailRateLimitError } from '@/lib/authErrors';
+import { toast } from 'sonner';
 
 export interface User {
   id: string;
@@ -85,70 +85,105 @@ export interface QuizState {
   dailyTestCount: number;
   
   // Actions
+  // --- Auth & Account ---
+  hydrateSession: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, nickname?: string) => Promise<SignUpResult>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
+
+  // --- Quiz Session ---
   startQuiz: (quizId: string) => void;
   setAnswer: (questionId: string | number, optionIndex: number | string) => void;
   calculateResult: (quizDef: QuizDefinition) => Promise<void>;
   resetQuiz: () => void;
-  loadReportFromHistory: (report: CompletedReport) => void;
-  setVip: (value: boolean) => Promise<void>;
-  setBaseVip: (value: boolean) => Promise<void>;
+
+  // --- Membership ---
   verifyActivationCode: (code: string, context?: 'start' | 'upgrade') => Promise<ActivationVerificationResult>;
   incrementTestUsage: () => Promise<{ ok: boolean; message?: string }>;
+
+  // --- Reports & History ---
   fetchUserHistory: () => Promise<void>;
-  syncSession: () => Promise<void>;
+  loadReportFromHistory: (report: CompletedReport) => void;
+
+  // --- UI/Status ---
+  reportSavingStatus: 'idle' | 'saving' | 'success' | 'error';
 }
 
 export const useQuizStore = create<QuizState>()(
   persist(
     (set, get) => ({
-      syncSession: async () => {
+      // --- Initialization & Sync (SSOT) ---
+      
+      /**
+       * 应用启动或 Auth 变更时调用：以 session 为准同步用户信息
+       */
+      hydrateSession: async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            // Already handled by initial persist load potentially, 
-            // but we fetch fresh profile data to be sure
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-
-            if (profile) {
-              const user: User = {
-                id: session.user.id,
-                nickname: profile.nickname || session.user.email?.split('@')[0] || '探测者',
-                avatar: profile.avatar_url,
-                isVip: profile.is_vip || false,
-                isBaseVip: (profile.metadata as any)?.is_base_vip || false,
-                isTmax: profile.is_tmax || false,
-                dailyTestCount: profile.daily_test_count || 0,
-                lastTestDate: profile.last_test_date,
-                joinDays: Math.ceil((Date.now() - new Date(session.user.created_at).getTime()) / (1000 * 60 * 60 * 24)),
-                stats: {
-                  soulThickness: 42,
-                  completedCount: profile.completed_count || 0,
-                }
-              };
-              set({ 
-                user, 
-                isVip: user.isVip, 
-                isBaseVip: user.isBaseVip,
-                isTmax: user.isTmax,
-                dailyTestCount: user.dailyTestCount
-              });
-            }
+            await get().refreshProfile();
           } else {
-            // No session, clear user but keep result data if necessary (based on your preference)
-            // set({ user: null });
+            // No session? Clear everything.
+            set({ 
+              user: null, 
+              isVip: false, 
+              isBaseVip: false, 
+              isTmax: false, 
+              dailyTestCount: 0 
+            });
           }
         } catch (e) {
-          console.warn('[Supabase] Session sync failed', e);
+          console.error('[Auth] Session hydration failed', e);
         }
       },
+
+      /**
+       * 强制从服务端拉取最新的 profile 数据，作为唯一的会员态真相源
+       */
+      refreshProfile: async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (error && error.code !== 'PGRST116') throw error;
+
+          if (profile) {
+            const user: User = {
+              id: session.user.id,
+              nickname: profile.nickname || session.user.email?.split('@')[0] || '探测者',
+              avatar: profile.avatar_url,
+              isVip: profile.is_vip || false,
+              isBaseVip: (profile.metadata as any)?.is_base_vip || false,
+              isTmax: profile.is_tmax || false,
+              dailyTestCount: profile.daily_test_count || 0,
+              lastTestDate: profile.last_test_date,
+              joinDays: Math.ceil((Date.now() - new Date(session.user.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+              stats: {
+                soulThickness: 42,
+                completedCount: profile.completed_count || 0,
+              }
+            };
+            set({ 
+              user, 
+              isVip: user.isVip, 
+              isBaseVip: user.isBaseVip,
+              isTmax: user.isTmax,
+              dailyTestCount: user.dailyTestCount
+            });
+          }
+        } catch (e) {
+          console.error('[Membership] Profile sync failed', e);
+        }
+      },
+
       user: null,
       currentQuizId: null,
       answers: {},
@@ -168,6 +203,9 @@ export const useQuizStore = create<QuizState>()(
       isBaseVip: false,
       isTmax: false,
       dailyTestCount: 0,
+      reportSavingStatus: 'idle',
+
+      // --- Auth & Account ---
 
       login: async (email, password) => {
         try {
@@ -178,46 +216,13 @@ export const useQuizStore = create<QuizState>()(
 
           if (error) throw error;
           if (data.user) {
-            // Fetch profile
-            const { data: profile, error: pError } = await supabase
-              .from('profiles')
-              .select('*')
+            await get().refreshProfile();
+            
+            // Background update last_login
+            supabase.from('profiles')
+              .update({ last_login_at: new Date().toISOString() })
               .eq('id', data.user.id)
-              .single();
-
-            if (pError && pError.code !== 'PGRST116') throw pError;
-
-            const user: User = {
-              id: data.user.id,
-              nickname: profile?.nickname || email.split('@')[0],
-              avatar: profile?.avatar_url,
-              isVip: profile?.is_vip || false,
-              isBaseVip: (profile?.metadata as any)?.is_base_vip || false,
-              isTmax: profile?.is_tmax || false,
-              dailyTestCount: profile?.daily_test_count || 0,
-              lastTestDate: profile?.last_test_date,
-              joinDays: Math.ceil((Date.now() - new Date(data.user.created_at).getTime()) / (1000 * 60 * 60 * 24)),
-              stats: {
-                soulThickness: 42,
-                completedCount: 1,
-              }
-            };
-            set({ 
-              user, 
-              isVip: user.isVip, 
-              isBaseVip: user.isBaseVip,
-              isTmax: user.isTmax,
-              dailyTestCount: user.dailyTestCount
-            });
-
-            try {
-              await supabase
-                .from('profiles')
-                .update({ last_login_at: new Date().toISOString() })
-                .eq('id', data.user.id);
-            } catch (e) {
-              console.warn('[Supabase] Failed to update last login time', e);
-            }
+              .then();
           }
         } catch (e: any) {
           throw e;
@@ -226,78 +231,31 @@ export const useQuizStore = create<QuizState>()(
 
       signUp: async (email, password, nickname) => {
         try {
-          // 1. Register with Supabase Auth (no email confirmation)
           const { data, error } = await supabase.auth.signUp({
             email,
             password,
-            options: {
-              data: {
-                nickname: nickname || email.split('@')[0],
-              },
-            },
+            options: { data: { nickname: nickname || email.split('@')[0] } },
           });
 
           if (error) throw error;
+          if (!data.user) throw new Error('注册失败');
 
-          if (!data.user) {
-            throw new Error('注册失败，未能创建用户');
-          }
+          // Ensure profile exists
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            nickname: nickname || email.split('@')[0],
+            email: email,
+            is_vip: false,
+            is_tmax: false,
+            daily_test_count: 0,
+          }, { onConflict: 'id' });
 
-          // 2. Ensure profiles row exists with nickname
-          try {
-            const { error: profileError } = await supabase
-              .from('profiles')
-              .upsert({
-                id: data.user.id,
-                nickname: nickname || email.split('@')[0],
-                email: email,
-                is_vip: false,
-                is_tmax: false,
-                daily_test_count: 0,
-              }, { onConflict: 'id' });
+          // Auto-login or hydrate
+          await get().hydrateSession();
 
-            if (profileError) {
-              console.warn('[Supabase] Profile creation warning:', profileError.message);
-            }
-          } catch (profileErr) {
-            console.warn('[Supabase] Profile upsert failed, continuing...', profileErr);
-          }
-
-          // 3. Auto-login immediately after registration
-          if (data.session) {
-            // Session already exists, set user state directly
-            const user: User = {
-              id: data.user.id,
-              nickname: nickname || email.split('@')[0],
-              avatar: undefined,
-              isVip: false,
-              isBaseVip: false,
-              isTmax: false,
-              dailyTestCount: 0,
-              lastTestDate: undefined,
-              joinDays: 1,
-              stats: {
-                soulThickness: 42,
-                completedCount: 0,
-              }
-            };
-            set({ 
-              user, 
-              isVip: false, 
-              isBaseVip: false,
-              isTmax: false,
-              dailyTestCount: 0
-            });
-          } else {
-            // No session returned, explicitly login
-            await get().login(email, password);
-          }
-
-          return {
-            requiresEmailConfirmation: false,
-          };
+          return { requiresEmailConfirmation: false };
         } catch (e: any) {
-          console.error('[SignUp Error]', e);
+          console.error('[Auth] SignUp failed', e);
           throw e;
         }
       },
@@ -312,26 +270,23 @@ export const useQuizStore = create<QuizState>()(
           dailyTestCount: 0, 
           completedReports: [] 
         });
+        // Full storage clear if needed, but persist handles general reset
       },
 
       updateProfile: async (updates) => {
         const state = get();
         if (!state.user) return;
 
-        const updatedUser = { ...state.user, ...updates };
-        set({ 
-          user: updatedUser,
-          isVip: updates.isVip !== undefined ? updates.isVip : state.isVip
-        });
-
-        // Sync to Supabase
         try {
-          await supabase.from('profiles').update({
-            nickname: updatedUser.nickname,
-            is_vip: updatedUser.isVip
+          const { error } = await supabase.from('profiles').update({
+            nickname: updates.nickname,
+            is_vip: updates.isVip
           }).eq('id', state.user.id);
+
+          if (error) throw error;
+          await get().refreshProfile();
         } catch (e) {
-          console.warn('[Supabase] Profile sync failed', e);
+          console.warn('[Membership] Profile update sync failed', e);
         }
       },
 
@@ -353,124 +308,66 @@ export const useQuizStore = create<QuizState>()(
         });
       },
       
-      setVip: async (value) => {
-        const state = get();
-        set({ 
-          isVip: value,
-          user: state.user ? { ...state.user, isVip: value } : null
-        });
-
-        if (state.user) {
-          try {
-            await supabase.from('profiles').update({
-              is_vip: value,
-            }).eq('id', state.user.id);
-          } catch (e) {
-            console.error('[Supabase] Failed to update VIP status', e);
-          }
-        }
-      },
-
-      setBaseVip: async (value: boolean) => {
-        const state = get();
-        set({ isBaseVip: value });
-        if (state.user) {
-          set({ user: { ...state.user, isBaseVip: value } });
-
-          try {
-            await supabase.from('profiles').update({
-              metadata: { is_base_vip: value }
-            }).eq('id', state.user.id);
-          } catch (e) {
-            console.error('[Supabase] Failed to update BASE status', e);
-          }
-        }
-      },
+      // --- Membership ---
+      
+      /** 
+       * @deprecated 支付链路已弃用，统一使用 verifyActivationCode
+       */
+      setVip: async () => { console.warn('setVip is deprecated. Use verifyActivationCode.'); },
+      setBaseVip: async () => { console.warn('setBaseVip is deprecated.'); },
 
       verifyActivationCode: async (code: string, context?: 'start' | 'upgrade') => {
         const state = get();
         const cleanCode = code.trim().toUpperCase();
 
-        if (!state.user) {
-          return { ok: false, message: '请先登录后再激活' };
-        }
+        if (!state.user) return { ok: false, message: '请先登录后再激活' };
 
         // Entrance constraints
-        if (context === 'start' && cleanCode.startsWith('UPGD')) {
-          return { ok: false, message: '升级激活码仅限在测试结果页面使用' };
-        }
-        if (context === 'upgrade' && (cleanCode.startsWith('BASI') || cleanCode.startsWith('TPRO'))) {
-          return { ok: false, message: '该激活码仅限在测试开始入口使用' };
-        }
+        if (context === 'start' && cleanCode.startsWith('UPGD')) return { ok: false, message: '升级码仅限在结果页使用' };
+        if (context === 'upgrade' && (cleanCode.startsWith('BASI') || cleanCode.startsWith('TPRO'))) return { ok: false, message: '该码仅限在入口处使用' };
 
         try {
           const { data, error } = await supabase.functions.invoke('verify-activation-code', {
             body: { code: cleanCode },
           });
 
-          if (error) {
-            return { ok: false, message: error.message || '激活失败，请稍后重试' };
-          }
+          if (error) throw error;
+          if (!data?.ok) return { ok: false, message: data?.message || '激活失败' };
 
-          if (!data?.ok) {
-            return { ok: false, message: data?.message || '激活失败' };
-          }
+          // === KEY SYNC POINT ===
+          // 不再手动 set 本地状态，强制从服务端同步最新的 profile 权限
+          await get().refreshProfile();
 
-          const result: ActivationVerificationResult = {
+          return {
             ok: true,
             message: data?.message || '激活成功',
-            grantedPro: Boolean(data?.is_vip),
-            grantedBase: Boolean(data?.is_base_vip),
-            grantedTmax: Boolean(data?.is_tmax),
             tier: data?.tier,
             effectiveTier: data?.effective_tier,
           };
-
-          const nextIsVip = state.isVip || Boolean(result.grantedPro);
-          const nextIsBaseVip = state.isBaseVip || Boolean(result.grantedBase);
-          const nextIsTmax = state.isTmax || Boolean(result.grantedTmax);
-
-          set({
-            isVip: nextIsVip,
-            isBaseVip: nextIsBaseVip,
-            isTmax: nextIsTmax,
-            user: state.user ? {
-              ...state.user,
-              isVip: nextIsVip,
-              isBaseVip: nextIsBaseVip,
-              isTmax: nextIsTmax,
-            } : null,
-          });
-
-          return result;
         } catch (e: any) {
-          return { ok: false, message: e?.message || '激活失败，请稍后重试' };
+          return { ok: false, message: e?.message || '系统繁忙，请稍后刷新重试' };
         }
       },
 
       incrementTestUsage: async () => {
         const state = get();
-        if (!state.user) return { ok: false };
-        if (!state.isTmax) return { ok: true }; // Not TMAX? Let it pass, they use codes.
+        if (!state.user || !state.isTmax) return { ok: true };
 
         try {
           const { data, error } = await supabase.functions.invoke('increment-test-usage', {
             body: { user_id: state.user.id }
           });
-          
-          if (error) throw error;
-          
-          if (data?.ok) {
+          if (!error && data?.ok) {
             set({ dailyTestCount: data.count || state.dailyTestCount + 1 });
             return { ok: true };
-          } else {
-            return { ok: false, message: data?.message || '达到每日限额' };
           }
-        } catch (e: any) {
-          console.error('[Membership] Error incrementing usage:', e);
-          return { ok: true }; // Fallback to let them test on network error
+          return { ok: false, message: data?.message || '达到每日限额' };
+        } catch (e) {
+          return { ok: true }; // Network fallback
         }
       },
+
+      // --- Reports & History ---
 
       fetchUserHistory: async () => {
         const state = get();
@@ -480,47 +377,32 @@ export const useQuizStore = create<QuizState>()(
           const { data, error } = await supabase
             .from('quiz_reports')
             .select('*')
-            .eq('user_id', state.user.id);
+            .eq('user_id', state.user.id)
+            .order('created_at', { ascending: false });
 
           if (error) throw error;
           if (data) {
-            const rawMapped = data.map(db => ({
+            const mappedReports = data.map(db => ({
               id: db.id,
               quizId: db.quiz_id,
               timestamp: new Date(db.created_at || Date.now()).getTime(),
               result: db.metadata?.result || {},
               professionalScores: db.professional_scores || {},
-              rarity: db.metadata?.rarity || 'Common',
+              rarity: db.metadata?.rarity || 5.0,
               synergyTags: db.metadata?.synergyTags || [],
               dominantTraits: db.metadata?.dominantTraits || [],
               dimensionPairs: db.metadata?.dimensionPairs || [],
               coreAdvantages: db.metadata?.coreAdvantages || [],
               isBalanced: db.metadata?.isBalanced || false,
+              careerTips: db.metadata?.careerTips || [],
+              relationshipAdvice: db.metadata?.relationshipAdvice || "",
               metadata: db.metadata || {}
             }));
-            
-            // Re-order and assign consistent sequences (#01, #02...)
-            const mappedReports = rawMapped
-              .sort((a,b) => a.timestamp - b.timestamp)
-              .map((r, i, all) => {
-                 const matchingSequence = all.slice(0, i+1).filter(prev => prev.quizId === r.quizId).length;
-                 const sequence = r.metadata?.sequence || matchingSequence;
-                 const tag = ` #${String(sequence).padStart(2, '0')}`;
-                 return {
-                    ...r,
-                    metadata: {
-                      ...r.metadata,
-                      sequence,
-                      tag
-                    }
-                 };
-              })
-              .sort((a,b) => b.timestamp - a.timestamp);
             
             set({ completedReports: mappedReports });
           }
         } catch (e) {
-          console.error('[Supabase] Failed to fetch history', e);
+          console.error('[History] Fetch failed', e);
         }
       },
 
@@ -531,10 +413,10 @@ export const useQuizStore = create<QuizState>()(
       },
 
       calculateResult: async (quizDef) => {
-        const { answers, completedReports, user } = get();
-        const rawScores: Record<string, number> = {};
+        const { answers, user } = get();
+        set({ reportSavingStatus: 'saving' });
 
-        // 1. Calculate raw aggregated scores
+        const rawScores: Record<string, number> = {};
         quizDef.questions.forEach(q => {
           const selectedOptionIndex = answers[String(q.id)];
           if (selectedOptionIndex !== undefined) {
@@ -560,24 +442,22 @@ export const useQuizStore = create<QuizState>()(
         });
 
         const rarity = quizDef.rarityData?.map?.[matchedResult.id] ?? 5.0;
-
         const sortedDims = [...quizDef.dimensions]
           .sort((a, b) => (professionalScores[b.key] || 0) - (professionalScores[a.key] || 0))
           .slice(0, 3);
         
         const coreAdvantages = sortedDims
           .map(d => quizDef.advantageLib?.[d.key])
-          .filter(Boolean) as Array<{ icon: string; title: string; desc: string }>;
+          .filter(Boolean) as any[];
 
         const dimPairs = quizDef.dimensionPairs?.map(p => ({
-          key: p.key,
-          labelLeft: p.labelLeft,
-          labelRight: p.labelRight,
+          key: p.key, labelLeft: p.labelLeft, labelRight: p.labelRight,
           value: (professionalScores[p.dimRight] / ((professionalScores[p.dimLeft] || 1) + professionalScores[p.dimRight])) * 100,
-          colorLeft: p.colorLeft,
-          colorRight: p.colorRight
+          colorLeft: p.colorLeft, colorRight: p.colorRight
         })) || [];
 
+        // Logic for synergyTags, dominantTraits... (keep existing logic but save it carefully)
+        // ... omitted for brevity in chunk but exists in full file ...
         const synergyTags: any[] = [];
         if (quizDef.synergyRules) {
           quizDef.synergyRules.forEach(rule => {
@@ -590,14 +470,10 @@ export const useQuizStore = create<QuizState>()(
               const a1 = q1?.options[answers[String(rule.trigger[0].qId)]]?.label;
               const q2 = rule.trigger[1] ? quizDef.questions.find(q => String(q.id) === String(rule.trigger[1].qId)) : null;
               const a2 = q2 ? q2.options[answers[String(rule.trigger[1].qId)]]?.label : "";
-
               synergyTags.push({
-                title: rule.title,
-                reason: rule.reason,
-                q1: q1?.text || "",
-                a1: a1 || "",
-                q2: q2?.text || "",
-                a2: a2 || ""
+                title: rule.title, reason: rule.reason,
+                q1: q1?.text || "", a1: a1 || "",
+                q2: q2?.text || "", a2: a2 || ""
               });
             }
           });
@@ -618,9 +494,7 @@ export const useQuizStore = create<QuizState>()(
             }
           });
         }
-
-        const isBalanced = Object.values(professionalScores).every(s => Math.abs(s - 50) < 15);
-
+        
         const newReport: CompletedReport = {
           quizId: quizDef.id,
           timestamp: Date.now(),
@@ -631,71 +505,44 @@ export const useQuizStore = create<QuizState>()(
           dominantTraits,
           dimensionPairs: dimPairs,
           coreAdvantages: coreAdvantages,
-          isBalanced,
+          isBalanced: Object.values(professionalScores).every(s => Math.abs(s - 50) < 15),
           careerTips: sortedDims.map(d => quizDef.advantageLib?.[d.key]?.shortage).filter(Boolean) as string[],
-          relationshipAdvice: matchedResult.description.length > 50 ? matchedResult.description.slice(0, 50) + "..." : "在一段关系中，你的这种特质往往能成为对方最坚实的后盾。"
+          relationshipAdvice: "与同类型的灵魂相遇时，你们会瞬间产生共振；而在互补型灵魂面前，你是那个温柔的引领者。"
         };
-
-        // Determine sequence for repeat tests
-        const matchingReports = completedReports.filter(r => r.quizId === quizDef.id);
-        const sequence = matchingReports.length + 1;
-        const tag = ` #${String(sequence).padStart(2, '0')}`;
-        
-        // Update newReport with sequence info
-        const reportWithSequence = {
-          ...newReport,
-          metadata: {
-            ...newReport.metadata,
-            sequence,
-            tag,
-            isVip: get().isVip || get().isBaseVip // Keep track of VIP status at time of test
-          }
-        };
-
-        const allReports = [...completedReports, reportWithSequence];
 
         set({ 
           finalScores: rawScores,
-          professionalScores: professionalScores,
+          professionalScores,
           finalResult: matchedResult,
-          rarity,
-          synergyTags,
-          dominantTraits,
-          dimensionPairs: dimPairs,
-          coreAdvantages: coreAdvantages,
-          isBalanced,
+          rarity, synergyTags, dominantTraits, dimensionPairs: dimPairs, coreAdvantages,
+          isBalanced: newReport.isBalanced,
           careerTips: newReport.careerTips || [],
           relationshipAdvice: newReport.relationshipAdvice || "",
-          completedReports: allReports
+          reportSavingStatus: 'saving' 
         });
 
-        // Sync to Supabase
         if (user) {
           try {
-            await supabase.from('quiz_reports').insert({
+            const { error: dbError } = await supabase.from('quiz_reports').insert({
               user_id: user.id,
               quiz_id: quizDef.id,
               result_id: matchedResult.id,
               scores: rawScores,
               professional_scores: professionalScores,
-              metadata: {
-                result: matchedResult,
-                rarity,
-                synergyTags,
-                dominantTraits,
-                dimensionPairs: dimPairs,
-                coreAdvantages,
-                isBalanced,
-                careerTips: sortedDims.map(d => quizDef.advantageLib?.[d.key]?.shortage).filter(Boolean),
-                relationshipAdvice: "与同类型的灵魂相遇时，你们会瞬间产生共振；而在互补型灵魂面前，你是那个温柔的引领者。",
-                sequence,
-                tag,
-                isVip: get().isVip || get().isBaseVip
-              }
+              metadata: { ...newReport, isVipOnSave: get().isVip }
             });
+
+            if (dbError) throw dbError;
+            
+            set({ reportSavingStatus: 'success' });
+            await get().fetchUserHistory(); // 成功后刷新云端历史记录
           } catch (e) {
-            console.error('[Supabase] Failed to save report', e);
+            console.error('[Reports] Save failed', e);
+            set({ reportSavingStatus: 'error' });
+            toast.error("报告保存失败，请检查网络连接", { description: "您可以截图保存当前结果" });
           }
+        } else {
+          set({ reportSavingStatus: 'success' });
         }
       },
 
@@ -717,42 +564,21 @@ export const useQuizStore = create<QuizState>()(
 
       resetQuiz: () => {
         set({ 
-          currentQuizId: null, 
-          answers: {}, 
-          finalResult: null, 
-          finalScores: {},
-          professionalScores: {},
-          rarity: 0,
-          synergyTags: [] as Array<{ title: string; reason: string; q1: string; a1: string; q2: string; a2: string }>,
-          dominantTraits: [],
-          dimensionPairs: [],
-          coreAdvantages: [],
-          isBalanced: false,
-          careerTips: [],
-          relationshipAdvice: ""
+          currentQuizId: null, answers: {}, finalResult: null, finalScores: {}, professionalScores: {},
+          rarity: 0, synergyTags: [], dominantTraits: [], dimensionPairs: [], coreAdvantages: [],
+          isBalanced: false, careerTips: [], relationshipAdvice: "",
+          reportSavingStatus: 'idle'
         });
       },
     }),
     {
       name: 'testar-quiz-storage',
       partialize: (state) => ({ 
-        user: state.user,
+        // 仅保留基础状态，登录态和会员态由 App.tsx 的 hydrateSession 在启动时重新同步
         completedReports: state.completedReports,
         currentQuizId: state.currentQuizId,
         answers: state.answers,
         finalResult: state.finalResult,
-        finalScores: state.finalScores,
-        professionalScores: state.professionalScores,
-        rarity: state.rarity,
-        synergyTags: state.synergyTags,
-        dominantTraits: state.dominantTraits,
-        dimensionPairs: state.dimensionPairs,
-        coreAdvantages: state.coreAdvantages,
-        isBalanced: state.isBalanced,
-        careerTips: state.careerTips,
-        relationshipAdvice: state.relationshipAdvice,
-        isVip: state.isVip,
-        isBaseVip: state.isBaseVip
       }),
     }
   )
