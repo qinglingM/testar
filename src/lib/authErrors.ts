@@ -31,7 +31,7 @@ export const getAuthErrorMessage = (
   const message = (error.message ?? "").toLowerCase();
 
   if (isEmailRateLimitError(error)) {
-    return "注册邮件发送过于频繁，请稍后再试";
+    return "注册请求被拦截：请在 Supabase 后台 Auth 设置中关闭 'Confirm Email' (确认邮箱) 选项。";
   }
 
   if (
