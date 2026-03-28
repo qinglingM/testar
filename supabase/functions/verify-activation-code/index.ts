@@ -7,17 +7,8 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // 1. Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
-  }
-
-  // 2. Only allow POST
-  if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ ok: false, message: "Method not allowed" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 405 }
-    );
   }
 
   try {
@@ -26,28 +17,31 @@ serve(async (req) => {
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const authHeader = req.headers.get("Authorization");
 
+    // CRITICAL: Return 200 even for config errors to debug
     if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
       return new Response(
-        JSON.stringify({ ok: false, message: "Supabase environment variables are missing" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        JSON.stringify({ 
+          ok: false, 
+          message: `雲端環境變量缺失 (URL: ${!!supabaseUrl}, Anon: ${!!supabaseAnonKey}, Service: ${!!supabaseServiceRoleKey})` 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
-    // 3. Authenticate User
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ ok: false, message: "请先登录后再进行激活" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        JSON.stringify({ ok: false, message: "請先登錄後再激活" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
     const body = await req.json().catch(() => ({}));
-    const code = body.code;
+    const code = body.code?.toString().trim().toUpperCase();
 
-    if (!code || typeof code !== "string" || !code.trim()) {
+    if (!code) {
       return new Response(
-        JSON.stringify({ ok: false, message: "激活码格式不正确" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        JSON.stringify({ ok: false, message: "激活碼無效" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
@@ -59,45 +53,40 @@ serve(async (req) => {
 
     if (userError || !user) {
       return new Response(
-        JSON.stringify({ ok: false, message: "登录态失效，请重新登录" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        JSON.stringify({ ok: false, message: "登錄狀態已過期，請重登" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
-    // 4. Exec RPC with Admin Privileges
     const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey);
     const { data, error: rpcError } = await adminClient.rpc("redeem_activation_code", {
       p_user_id: user.id,
-      p_code: code.trim(),
+      p_code: code,
     });
 
-    // CRITICAL: Handle RPC errors as 200 responses with status if they are business logic errors
     if (rpcError) {
-      console.error("[RPC Error]", rpcError);
       return new Response(
         JSON.stringify({ 
           ok: false, 
-          message: rpcError.message || "激活码核銷失敗，請聯繫客服",
-          detail: rpcError.details 
+          message: rpcError.message || "資料庫 RPC 執行出錯",
+          detail: rpcError.details,
+          hint: rpcError.hint
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 } // Return 200 so frontend can show message
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
-    const payload = data || { ok: false, message: "激活失敗，激活碼可能已失效" };
-
     return new Response(
-      JSON.stringify(payload),
+      JSON.stringify(data || { ok: false, message: "激活失敗" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
 
   } catch (error) {
-    console.error("[Server Error]", error);
-    const message = error instanceof Error ? error.message : "Internal Server Error";
-    
+    // FORCE 200 return for ALL errors to prevent SDK interception
+    const message = error instanceof Error ? error.message : "發生未知運行時異常";
     return new Response(
-      JSON.stringify({ ok: false, message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ ok: false, message: `[EDGE_FATAL] ${message}` }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
 });
