@@ -488,37 +488,36 @@ export const useQuizStore = create<QuizState>()(
           const session = (await supabase.auth.getSession()).data.session;
           if (!session) return { ok: false, message: '请先登录' };
 
-          // NATIVE FETCH BYPASS: Directly call the function to bypass SDK interceptors
-          const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const functionUrl = `${baseUrl}/functions/v1/verify-activation-code`;
-          const response = await fetch(functionUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`,
-              'apikey': (supabase as any).supabaseAnonKey || (import.meta.env.VITE_SUPABASE_ANON_KEY),
-            },
-            body: JSON.stringify({ code: cleanCode }),
+          // ULTIMATE FIX: Bypass Edge Function entirely!
+          // Since redeem_activation_code is SECURITY DEFINER, the frontend can call it directly.
+          // This avoids all Edge Function Kong Gateway / Invalid JWT / CORS errors.
+          const { data, error } = await supabase.rpc('redeem_activation_code', {
+            p_user_id: session.user.id,
+            p_code: cleanCode
           });
 
-          const data = await response.json().catch(() => ({ ok: false, message: '响应解析失败' }));
+          if (error) {
+            console.error('[Membership] RPC Error:', error);
+            return { ok: false, message: error.message || '资料库处理失败，请稍后重试' };
+          }
           
-          console.log('[DEBUG] Native Fetch Result:', { status: response.status, data });
+          // data is the JSONB returned from RPC
+          const result = data as any;
 
-          if (!response.ok || !data.ok) {
-            return { ok: false, message: data?.message || `后端解析异常 (${response.status})` };
+          if (!result || !result.ok) {
+            return { ok: false, message: result?.message || '激活码可能已失效，请联系客服' };
           }
 
           await get().refreshProfile();
 
           return {
             ok: true,
-            message: data?.message || '激活成功',
-            tier: data?.tier as string,
-            effectiveTier: data?.effective_tier as string,
+            message: result.message || '激活成功',
+            tier: result.tier as string,
+            effectiveTier: result.effective_tier as string,
           };
         } catch (e: unknown) {
-          console.error('[Membership] Native Fetch Exception', e);
+          console.error('[Membership] Direct RPC Exception', e);
           const msg = e instanceof Error ? e.message : '系統繁忙，請稍後重試';
           return { ok: false, message: msg };
         }
