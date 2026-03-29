@@ -25,9 +25,11 @@ const QuizDetailPage = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   
   const verifyActivationCode = useQuizStore(state => state.verifyActivationCode);
-  const isVip = useQuizStore(state => state.isVip);
-  const isBaseVip = useQuizStore(state => state.isBaseVip);
+  const unlockedQuizzes = useQuizStore(state => state.unlockedQuizzes);
   const isTmax = useQuizStore(state => state.isTmax);
+  
+  const quizDef = slug ? getQuizDef(slug) : null;
+  const hasBaseOrHigher = isTmax || (quizDef && unlockedQuizzes[quizDef.id]?.base) || (quizDef && unlockedQuizzes[quizDef.id]?.pro);
   const startQuiz = useQuizStore(state => state.startQuiz);
   const incrementTestUsage = useQuizStore(state => state.incrementTestUsage);
   const user = useQuizStore(state => state.user);
@@ -43,7 +45,7 @@ const QuizDetailPage = () => {
     }
   }, [user?.id]);
 
-  const quizDef = slug ? getQuizDef(slug) : null;
+
 
   useEffect(() => {
     if (quizDef) {
@@ -192,7 +194,7 @@ const QuizDetailPage = () => {
           transition={{ delay: 0.3 }}
           className="w-2/3 mx-auto h-16 rounded-[2rem] btn-premium shadow-2xl flex items-center justify-center gap-3 transition-all"
           onClick={() => {
-            if (isTmax) {
+            if (hasBaseOrHigher) {
               handleStartFinal();
             } else if (!user) {
               setShowAuthModal(true);
