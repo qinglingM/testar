@@ -197,9 +197,9 @@ const QuizResultPage = () => {
                <div className="w-16 h-16 bg-primary text-white rounded-3xl flex items-center justify-center mb-6 shadow-xl ring-8 ring-primary/5">
                   <Sparkles className="w-8 h-8 fill-white" />
                </div>
-               <h3 className="font-display font-black text-xl mb-3">深度分析已就绪</h3>
-               <p className="text-xs text-muted-foreground mb-8 leading-relaxed max-w-[240px]">
-                 核心潜能库、避坑指南、灵魂交互建议等 3000 字专属深度内容已为您同步。
+               <h3 className="font-display font-black text-[1.15rem] leading-none mb-3">您已处在 PRO 星流</h3>
+               <p className="text-[11px] text-muted-foreground mb-8 leading-relaxed max-w-[240px] font-bold">
+                 无需重复升级使用。核心潜能库、避坑指南、灵魂交互建议等 3000 字专属深度内容已为您全量解锁。
                </p>
                <button 
                  onClick={() => navigate(`/quiz/${slug}/report`)}
