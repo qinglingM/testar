@@ -93,7 +93,11 @@ Deno.serve(async (req) => {
           WHERE id = p_user_id;
         END IF;
         
-        UPDATE public.activation_codes SET redeemed_count = redeemed_count + 1 WHERE id = v_code.id;
+        UPDATE public.activation_codes 
+        SET 
+           redeemed_count = redeemed_count + 1,
+           status = CASE WHEN (redeemed_count + 1) >= max_redemptions THEN 'disabled' ELSE status END
+        WHERE id = v_code.id;
         
         INSERT INTO public.activation_redemptions (activation_code_id, user_id, effective_tier, metadata) 
         VALUES (v_code.id, p_user_id, v_code.tier, jsonb_build_object('real_tier', v_code.tier, 'quiz_id', COALESCE(p_quiz_id, 'global')));
@@ -158,10 +162,20 @@ Deno.serve(async (req) => {
     `;
 
     await connection.queryObject(sql);
+
+    // 4. Scrub any already-used codes to 'disabled' just in case
+    await connection.queryObject(`
+      UPDATE public.activation_codes 
+      SET status = 'disabled' 
+      WHERE redeemed_count >= max_redemptions AND status = 'active';
+    `);
+
     connection.release();
 
-    return new Response(JSON.stringify({ ok: true, message: "Database Patches Super-Deployed Atomically." }), { headers: corsHeaders, status: 200 });
-
+    return new Response(
+      JSON.stringify({ ok: true, message: "Database Patches Super-Deployed Atomically." }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error) {
     return new Response(JSON.stringify({ ok: false, message: error.message }), { headers: corsHeaders, status: 500 });
   }
