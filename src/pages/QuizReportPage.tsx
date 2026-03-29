@@ -11,6 +11,7 @@ import Header from "@/components/layout/Header";
 import { useEffect, useState } from "react";
 import { track } from "@/utils/analytics";
 import { ShareModal } from "@/components/quiz/ShareModal";
+import ResultSummaryCard from "@/components/quiz/ResultSummaryCard";
 
 interface ReportBlockProps {
   title: string;
@@ -99,6 +100,7 @@ const QuizReportPage = () => {
   const dimensionPairs = useQuizStore(state => state.dimensionPairs);
   const answers = useQuizStore(state => state.answers);
   const rarity = useQuizStore(state => state.rarity);
+  const professionalScores = useQuizStore(state => state.professionalScores);
   
   const quizDef = slug ? getQuizDef(slug) : null;
 
@@ -188,6 +190,19 @@ const QuizReportPage = () => {
       </div>
 
       <div className="px-6 pb-24 space-y-4">
+        {/* Core Visualization Graph */}
+        <div className="mb-6 -mx-1">
+          <ResultSummaryCard 
+            title={currentResult.title}
+            subtitle={currentResult.subtitle}
+            dimensionPairs={dimensionPairs}
+            chartType={quizDef.visualization === 'radar' ? 'radar' : 'spectrum'}
+            dimensions={quizDef.dimensions.map(d => ({ ...d, colorClass: d.colorClass || 'bg-primary' }))}
+            scores={professionalScores}
+            cityBaseline={typeof currentResult.cityBaseline === 'object' ? currentResult.cityBaseline : undefined}
+          />
+        </div>
+
         {/* Pro Analysis Content */}
         {currentResult.paidAnalysis && (
           <ReportBlock title="深度画像解析" icon={Sparkles} delay={0.1}>
