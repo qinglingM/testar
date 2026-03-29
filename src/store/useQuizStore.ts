@@ -124,7 +124,7 @@ interface QuizState {
   calculateResult: (quizDef: QuizDefinition) => Promise<void>;
   resetQuiz: () => void;
 
-  verifyActivationCode: (code: string, context?: 'start' | 'upgrade') => Promise<ActivationVerificationResult>;
+  verifyActivationCode: (code: string, context?: 'start' | 'upgrade', overrideQuizId?: string) => Promise<ActivationVerificationResult>;
   incrementTestUsage: () => Promise<{ ok: boolean; message?: string }>;
 
   fetchUserHistory: () => Promise<void>;
@@ -525,8 +525,7 @@ export const useQuizStore = create<QuizState>()(
         set({ ...INITIAL_QUIZ_STATE });
       },
 
-      // --- Membership & History ---
-      verifyActivationCode: async (code, context) => {
+      verifyActivationCode: async (code, context, overrideQuizId) => {
         const state = get();
         const cleanCode = code.trim().toUpperCase();
 
@@ -536,7 +535,7 @@ export const useQuizStore = create<QuizState>()(
           const session = (await supabase.auth.getSession()).data.session;
           if (!session) return { ok: false, message: '请先登录' };
 
-          const quizId = state.currentQuizId || 'global';
+          const quizId = overrideQuizId || state.currentQuizId || 'global';
           
           const { data, error } = await supabase.rpc('redeem_activation_code_v5', {
             p_user_id: session.user.id,

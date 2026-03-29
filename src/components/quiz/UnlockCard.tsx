@@ -87,7 +87,7 @@ const UnlockCard = ({ onUnlock, isUpgrade = false }: UnlockCardProps) => {
     if (!code.trim() || isVerifying) return;
     
     setIsVerifying(true);
-    const result = await verifyCode(code, 'upgrade');
+    const result = await verifyCode(code, 'upgrade', slug);
     
     track('verify_activation_code', { code, success: result.ok, type: isUpgrade ? 'upgrade' : 'full' });
     

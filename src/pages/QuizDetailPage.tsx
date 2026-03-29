@@ -87,7 +87,8 @@ const QuizDetailPage = () => {
     }
 
     setIsVerifying(true);
-    const result = await verifyActivationCode(code, 'start');
+    // Explicitly pass quizDef.id as the test hasn't officially started (so currentQuizId is null)
+    const result = await verifyActivationCode(code, 'start', quizDef?.id);
     setIsVerifying(false);
 
     if (result.ok) {
