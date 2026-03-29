@@ -78,7 +78,7 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                         <User className="w-10 h-10" />
                       </div>
                     </div>
-                    {user?.isVip && (
+                    {user?.isTmax && (
                       <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-yellow-400 rounded-full border-4 border-background flex items-center justify-center shadow-lg">
                         <Star className="w-3.5 h-3.5 text-white fill-white" />
                       </div>
@@ -90,9 +90,9 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                     </h3>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-lg border ${
-                        user?.isVip ? 'bg-yellow-500/10 text-yellow-600 border-yellow-200' : 'bg-green-50 text-green-700 border-green-100'
+                        user?.isTmax ? 'bg-yellow-500/10 text-yellow-600 border-yellow-200' : 'bg-green-50 text-green-700 border-green-100'
                       }`}>
-                        {user?.isVip ? 'MAX Member' : 'Standard'}
+                        {user?.isTmax ? 'MAX Member' : 'Standard'}
                       </span>
                       <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black opacity-30"># {user ? user.id.slice(0, 8) : 'ST-409'}</span>
                     </div>
@@ -105,7 +105,7 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
                   <StatCard label="灵魂厚度" value={user?.stats?.soulThickness || "42"} />
                 </div>
 
-                {!user?.isVip && (
+                {!user?.isTmax && (
                   <motion.div 
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setIsVipOpen(true)}
