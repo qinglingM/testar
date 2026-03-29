@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Mail, Lock, ArrowRight, Loader2, User, ChevronLeft, Eye, EyeOff } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuizStore } from "@/store/useQuizStore";
 import { getAuthErrorMessage } from "@/lib/authErrors";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   
   const login = useQuizStore(state => state.login);
   const signUp = useQuizStore(state => state.signUp);
+  const navigate = useNavigate();
 
   // Computed next status
   const isEmailValid = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), [email]);
@@ -67,6 +69,7 @@ const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
       }
       onClose();
       resetState();
+      navigate('/');
     } catch (error: unknown) {
       console.error(error);
       setHasError(true);

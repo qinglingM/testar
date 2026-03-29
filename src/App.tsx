@@ -54,6 +54,9 @@ const AnalyticsTracker = () => {
     // Tracking page view on every location change
     const pageName = document.title || 'Testar';
     trackPageView(pageName);
+    
+    // Auto scroll to top on every route change
+    window.scrollTo(0, 0);
   }, [location, user]);
 
   return null;
