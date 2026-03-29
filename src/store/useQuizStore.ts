@@ -97,6 +97,7 @@ interface QuizState {
   
   // Current Quiz State
   currentQuizId: string | null;
+  unlockedQuizzes: Record<string, { base: boolean, pro: boolean }>;
   answers: Record<string, number>;
   finalResult: QuizResult | null;
   finalScores: Record<string, number>;
@@ -137,6 +138,7 @@ interface QuizState {
  */
 const INITIAL_QUIZ_STATE = {
   currentQuizId: null,
+  unlockedQuizzes: {},
   answers: {},
   finalResult: null,
   finalScores: {},
@@ -193,14 +195,37 @@ export const useQuizStore = create<QuizState>()(
           if (error && error.code !== 'PGRST116') throw error;
 
           if (profile) {
-            const metadata = (profile.metadata as Record<string, unknown>) || {};
+            // Fetch per-quiz redemptions
+            const { data: redemptions } = await supabase
+              .from('activation_redemptions')
+              .select('effective_tier, metadata')
+              .eq('user_id', session.user.id);
+            
+            const unlockedQuizzes: Record<string, { base: boolean, pro: boolean }> = {};
+            if (redemptions) {
+              redemptions.forEach(r => {
+                const qId = r.metadata?.quiz_id;
+                if (qId) {
+                  if (!unlockedQuizzes[qId]) unlockedQuizzes[qId] = { base: false, pro: false };
+                  if (['base', 'basi', 'upgd', 'pro', 'tpro'].includes(r.effective_tier)) unlockedQuizzes[qId].base = true;
+                  if (['pro', 'tpro', 'upgd'].includes(r.effective_tier)) unlockedQuizzes[qId].pro = true;
+                }
+              });
+            }
+
+            const currentQuizId = get().currentQuizId;
+            const isTmax = profile.is_tmax || false;
+            
+            const isVip = isTmax || (currentQuizId ? unlockedQuizzes[currentQuizId]?.pro : false) || false;
+            const isBaseVip = isTmax || isVip || (currentQuizId ? unlockedQuizzes[currentQuizId]?.base : false) || false;
+
             const user: User = {
               id: session.user.id,
               nickname: profile.nickname || session.user.email?.split('@')[0] || '探测者',
               avatar: profile.avatar_url,
-              isVip: profile.is_vip || false,
-              isBaseVip: (metadata.is_base_vip as boolean) || false,
-              isTmax: profile.is_tmax || false,
+              isVip,
+              isBaseVip,
+              isTmax,
               dailyTestCount: profile.daily_test_count || 0,
               lastTestDate: profile.last_test_date,
               joinDays: Math.ceil((Date.now() - new Date(session.user.created_at).getTime()) / (1000 * 60 * 60 * 24)),
@@ -211,9 +236,10 @@ export const useQuizStore = create<QuizState>()(
             };
             set({ 
               user, 
-              isVip: user.isVip, 
-              isBaseVip: user.isBaseVip,
-              isTmax: user.isTmax,
+              unlockedQuizzes,
+              isVip, 
+              isBaseVip,
+              isTmax,
               dailyTestCount: user.dailyTestCount
             });
           }
@@ -311,7 +337,19 @@ export const useQuizStore = create<QuizState>()(
 
       // --- Quiz Session ---
       startQuiz: (quizId) => {
-        set({ ...INITIAL_QUIZ_STATE, currentQuizId: quizId });
+        const state = get();
+        const isTmax = state.isTmax;
+        const quizUnlocked = state.unlockedQuizzes[quizId];
+        const isVip = isTmax || (quizUnlocked?.pro ?? false);
+        const isBaseVip = isTmax || isVip || (quizUnlocked?.base ?? false);
+
+        set({ 
+          ...INITIAL_QUIZ_STATE, 
+          currentQuizId: quizId, 
+          isVip,
+          isBaseVip,
+          reportSavingStatus: 'idle' 
+        });
       },
 
       setAnswer: (questionId, optionIndex) => {
@@ -460,8 +498,16 @@ export const useQuizStore = create<QuizState>()(
       },
 
       loadReportFromHistory: (report) => {
+        const state = get();
+        const quizUnlocked = state.unlockedQuizzes[report.quizId];
+        const isTmax = state.isTmax;
+        const isVip = isTmax || (quizUnlocked?.pro ?? false);
+        const isBaseVip = isTmax || isVip || (quizUnlocked?.base ?? false);
+
         set({
           currentQuizId: report.quizId,
+          isVip,
+          isBaseVip,
           finalResult: report.result,
           professionalScores: report.professionalScores,
           rarity: report.rarity,
@@ -490,17 +536,17 @@ export const useQuizStore = create<QuizState>()(
           const session = (await supabase.auth.getSession()).data.session;
           if (!session) return { ok: false, message: '请先登录' };
 
-          // POINT 2 & 5: ONE SINGLE SOURCE OF TRUTH
-          // Calling the atomic v3 RPC deployed via our auto-patcher.
-          const { data, error } = await supabase.rpc('redeem_activation_code_v4', {
+          const quizId = state.currentQuizId || 'global';
+          
+          const { data, error } = await supabase.rpc('redeem_activation_code_v5', {
             p_user_id: session.user.id,
             p_code: cleanCode,
+            p_quiz_id: quizId,
             p_context: context || 'start'
           });
 
           if (error) {
             console.error('[Membership] RPC Error:', error);
-            // POINT 3: Unified messages
             return { ok: false, message: error.message || '系统繁忙，请稍后再试' };
           }
           
@@ -509,7 +555,6 @@ export const useQuizStore = create<QuizState>()(
             return { ok: false, message: result?.message || '激活码异常或已失效' };
           }
 
-          // POINT 4: Synchronize all variables directly from the database output correctly
           await get().refreshProfile();
 
           return {

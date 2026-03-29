@@ -26,8 +26,8 @@ Deno.serve(async (req) => {
       ALTER TABLE public.activation_codes DROP CONSTRAINT IF EXISTS activation_codes_tier_valid;
       ALTER TABLE public.activation_codes ADD CONSTRAINT activation_codes_tier_valid CHECK (tier IN ('basi', 'upgd', 'tpro', 'tmax', 'base', 'pro'));
 
-      -- 2. Create Universal Point of Truth for Registration (No internal COMMIT/ROLLBACK)
-      CREATE OR REPLACE FUNCTION public.redeem_activation_code_v4(p_user_id UUID, p_code TEXT, p_context TEXT DEFAULT 'start')
+      -- 2. Create Universal Point of Truth for Registration (Per-Quiz Unlocks)
+      CREATE OR REPLACE FUNCTION public.redeem_activation_code_v5(p_user_id UUID, p_code TEXT, p_quiz_id TEXT, p_context TEXT DEFAULT 'start')
       RETURNS JSONB
       LANGUAGE plpgsql SECURITY DEFINER AS $$
       DECLARE
@@ -37,7 +37,6 @@ Deno.serve(async (req) => {
         v_has_base BOOLEAN := false;
         v_is_vip BOOLEAN := false;
         v_is_tmax BOOLEAN := false;
-        v_new_metadata JSONB;
       BEGIN
         SELECT * INTO v_code FROM public.activation_codes WHERE code = p_code FOR UPDATE;
         IF v_code IS NULL THEN RETURN jsonb_build_object('ok', false, 'message', '该激活码不存在或已下架'); END IF;
@@ -49,18 +48,28 @@ Deno.serve(async (req) => {
         IF p_context = 'upgrade' AND v_code.tier IN ('basi', 'tpro') THEN RETURN jsonb_build_object('ok', false, 'message', '基础分析码仅限在首页入口处使用'); END IF;
 
         SELECT * INTO v_profile FROM public.profiles WHERE id = p_user_id FOR UPDATE;
-        v_has_base := COALESCE((v_profile.metadata->>'is_base_vip')::boolean, false);
-        v_is_vip := COALESCE(v_profile.is_vip, false);
         v_is_tmax := COALESCE(v_profile.is_tmax, false);
-        v_new_metadata := COALESCE(v_profile.metadata, '{}'::jsonb);
 
+        IF v_code.tier != 'tmax' AND p_quiz_id IS NULL THEN
+           RETURN jsonb_build_object('ok', false, 'message', '普通兑换码必须指定目标测试项目');
+        END IF;
+
+        -- Check if already redeemed THIS specific code
         IF EXISTS (SELECT 1 FROM public.activation_redemptions WHERE activation_code_id = v_code.id AND user_id = p_user_id) THEN
           RETURN jsonb_build_object('ok', false, 'message', '您已经兑换过此补充包，无法重复获取');
         END IF;
 
+        -- Check per-quiz privileges
+        IF v_code.tier != 'tmax' THEN
+           SELECT TRUE INTO v_has_base FROM public.activation_redemptions WHERE user_id = p_user_id AND effective_tier IN ('base', 'basi', 'upgd', 'pro', 'tpro') AND metadata->>'quiz_id' = p_quiz_id LIMIT 1;
+           v_has_base := COALESCE(v_has_base, false);
+           SELECT TRUE INTO v_is_vip FROM public.activation_redemptions WHERE user_id = p_user_id AND effective_tier IN ('pro', 'tpro', 'upgd') AND metadata->>'quiz_id' = p_quiz_id LIMIT 1;
+           v_is_vip := COALESCE(v_is_vip, false);
+        END IF;
+
         -- Business Logic unified block
         IF v_code.tier IN ('basi', 'base') THEN
-          IF v_has_base OR v_is_vip OR v_is_tmax THEN RETURN jsonb_build_object('ok', false, 'message', '您已拥有基础或更高权限，无需使用此券'); END IF;
+          IF v_has_base OR v_is_tmax THEN RETURN jsonb_build_object('ok', false, 'message', '针对该测试，您已拥有基础或更高权限，无需使用此券'); END IF;
           v_has_base := true;
           v_msg := 'BASI 基础探测权限已解锁';
         ELSIF v_code.tier IN ('upgd', 'tpro', 'pro') THEN
@@ -71,26 +80,23 @@ Deno.serve(async (req) => {
         ELSIF v_code.tier = 'tmax' THEN
           IF v_is_tmax THEN RETURN jsonb_build_object('ok', false, 'message', '您已经是尊贵的 TMAX 大会员，无需重复充值'); END IF;
           v_is_tmax := true;
-          v_is_vip := true;
           v_msg := 'TMAX 大会员特权已点亮，您已获得每日10次专属免费运算频次';
         ELSE
           RETURN jsonb_build_object('ok', false, 'message', '未知的加密档案代码');
         END IF;
 
-        v_new_metadata := jsonb_set(v_new_metadata, '{is_base_vip}', to_jsonb(v_has_base));
-        
-        -- DML Updates - Notice we do NOT manually inject "+10" to daily_test_count anymore!
-        UPDATE public.profiles SET 
-          is_vip = v_is_vip, 
-          is_tmax = v_is_tmax, 
-          metadata = v_new_metadata, 
-          updated_at = now() 
-        WHERE id = p_user_id;
+        -- DML Updates - Update tmax globally
+        IF v_code.tier = 'tmax' THEN
+          UPDATE public.profiles SET 
+            is_tmax = true,
+            updated_at = now() 
+          WHERE id = p_user_id;
+        END IF;
         
         UPDATE public.activation_codes SET redeemed_count = redeemed_count + 1 WHERE id = v_code.id;
         
         INSERT INTO public.activation_redemptions (activation_code_id, user_id, effective_tier, metadata) 
-        VALUES (v_code.id, p_user_id, v_code.tier, jsonb_build_object('real_tier', v_code.tier));
+        VALUES (v_code.id, p_user_id, v_code.tier, jsonb_build_object('real_tier', v_code.tier, 'quiz_id', COALESCE(p_quiz_id, 'global')));
 
         RETURN jsonb_build_object(
           'ok', true, 
@@ -105,7 +111,7 @@ Deno.serve(async (req) => {
       END;
       $$;
 
-      GRANT EXECUTE ON FUNCTION public.redeem_activation_code_v4(UUID, TEXT, TEXT) TO authenticated;
+      GRANT EXECUTE ON FUNCTION public.redeem_activation_code_v5(UUID, TEXT, TEXT, TEXT) TO authenticated;
 
       -- 3. Singular Source of Truth for test usage limiting
       CREATE OR REPLACE FUNCTION public.increment_test_usage_v2(p_user_id UUID)
