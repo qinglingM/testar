@@ -275,16 +275,21 @@ export const useQuizStore = create<QuizState>()(
       },
 
       logout: async () => {
-        await supabase.auth.signOut();
-        set({ 
-          user: null, 
-          isVip: false, 
-          isBaseVip: false, 
-          isTmax: false, 
-          dailyTestCount: 0, 
-          completedReports: [],
-          ...INITIAL_QUIZ_STATE
-        });
+        try {
+          await supabase.auth.signOut();
+        } catch (e) {
+          console.error('[Auth] Remote signOut failed, forcing local clear', e);
+        } finally {
+          set({ 
+            user: null, 
+            isVip: false, 
+            isBaseVip: false, 
+            isTmax: false, 
+            dailyTestCount: 0, 
+            completedReports: [],
+            ...INITIAL_QUIZ_STATE
+          });
+        }
       },
 
       updateProfile: async (updates) => {

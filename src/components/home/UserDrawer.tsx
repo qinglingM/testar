@@ -24,7 +24,15 @@ const UserDrawer = ({ isOpen, onClose }: UserDrawerProps) => {
   const [isVipOpen, setIsVipOpen] = useState(false);
 
   const handleLogout = async () => {
-    await logout();
+    toast.promise(logout(), {
+      loading: '正在安全断开连接...',
+      success: () => {
+        onClose();
+        navigate('/');
+        return '已退出登录';
+      },
+      error: '断开连接失败'
+    });
   };
 
   const showHelpSupport = () => {
