@@ -487,7 +487,7 @@ export const useQuizStore = create<QuizState>()(
 
           // POINT 2 & 5: ONE SINGLE SOURCE OF TRUTH
           // Calling the atomic v3 RPC deployed via our auto-patcher.
-          const { data, error } = await supabase.rpc('redeem_activation_code_v3', {
+          const { data, error } = await supabase.rpc('redeem_activation_code_v4', {
             p_user_id: session.user.id,
             p_code: cleanCode,
             p_context: context || 'start'
@@ -524,7 +524,8 @@ export const useQuizStore = create<QuizState>()(
         const state = get();
         if (!state.user) return { ok: false };
         try {
-          const { data, error } = await supabase.rpc('increment_test_usage', { user_id_param: state.user.id });
+          // Switch to increment_test_usage_v2 for strict limit/count separation logic
+          const { data, error } = await supabase.rpc('increment_test_usage_v2', { p_user_id: state.user.id });
           if (error) throw error;
           
           // POINT 1 FIX: Backend returns { ok, message, count }. We must not cast object to boolean blindly.
