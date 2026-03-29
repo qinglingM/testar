@@ -75,9 +75,9 @@ const QuizResultPage = () => {
             subtitle={currentResult.subtitle}
             dimensionPairs={dimensionPairs}
             chartType={quizDef.visualization === 'radar' ? 'radar' : 'spectrum'}
-            dimensions={quizDef.dimensions}
+            dimensions={quizDef.dimensions.map(d => ({ ...d, colorClass: d.colorClass || 'bg-primary' }))}
             scores={professionalScores}
-            cityBaseline={cityBaseline}
+            cityBaseline={typeof currentResult.cityBaseline === 'object' ? currentResult.cityBaseline : undefined}
           />
 
           <motion.div 
@@ -105,13 +105,17 @@ const QuizResultPage = () => {
 
       <div className="px-5 space-y-8 pb-24">
         <div className="glass-card p-5 relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-5">
-             <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
-               <History className="w-4 h-4" />
-             </div>
-             <h3 className="font-display font-black text-xs text-foreground uppercase tracking-widest">
-               心理足迹 Preview
-             </h3>
+          <div className="flex items-center gap-3 mb-6 relative">
+            <div className="absolute -left-5 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-primary rounded-r-lg shadow-sm" />
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-sm">
+               <History className="w-5 h-5" />
+            </div>
+            <div>
+               <h3 className="font-display font-black text-[1.1rem] text-foreground tracking-tight leading-none text-left">
+                 心理足迹 Preview
+               </h3>
+               <div className="h-1 w-8 bg-primary/20 rounded-full mt-2" />
+            </div>
           </div>
           
           <div className="space-y-5">
@@ -171,10 +175,18 @@ const QuizResultPage = () => {
         </div>
 
         <div id="unlock-section" className="relative overflow-hidden rounded-3xl group">
-          <h3 className="font-display font-bold text-sm mb-3 pl-1 flex items-center gap-2 text-foreground">
-            <span className="w-1.5 h-4 bg-primary rounded-full block" />
-            专属深度分析
-          </h3>
+          <div className="flex items-center gap-3 mb-6 relative px-1">
+            <div className="absolute -left-5 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-primary rounded-r-lg shadow-sm" />
+            <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-sm">
+               <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+               <h3 className="font-display font-black text-[1.1rem] text-foreground tracking-tight leading-none text-left">
+                 专属深度分析
+               </h3>
+               <div className="h-1 w-8 bg-primary/20 rounded-full mt-2" />
+            </div>
+          </div>
           
           {isVip ? (
             <motion.div 
