@@ -481,41 +481,40 @@ export const useQuizStore = create<QuizState>()(
 
         if (!state.user) return { ok: false, message: '请先登录后再激活' };
 
-        if (context === 'start' && cleanCode.startsWith('UPGD')) return { ok: false, message: '升级码仅限在结果页使用' };
-        if (context === 'upgrade' && (cleanCode.startsWith('BASI') || cleanCode.startsWith('TPRO'))) return { ok: false, message: '该码仅限在入口处使用' };
-
         try {
           const session = (await supabase.auth.getSession()).data.session;
           if (!session) return { ok: false, message: '请先登录' };
 
-          // NATIVE FUNCTION FETCH: Bypassing Kong SDK token limits by hitting Edge directly
-          const baseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const functionUrl = `${baseUrl}/functions/v1/verify-activation-code`;
-          const response = await fetch(functionUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify({ code: cleanCode }),
+          // POINT 2 & 5: ONE SINGLE SOURCE OF TRUTH
+          // Calling the atomic v3 RPC deployed via our auto-patcher.
+          const { data, error } = await supabase.rpc('redeem_activation_code_v3', {
+            p_user_id: session.user.id,
+            p_code: cleanCode,
+            p_context: context || 'start'
           });
 
-          const data = await response.json().catch(() => ({ ok: false, message: '雲端響應異常' }));
+          if (error) {
+            console.error('[Membership] RPC Error:', error);
+            // POINT 3: Unified messages
+            return { ok: false, message: error.message || '系统繁忙，请稍后再试' };
+          }
           
-          if (!response.ok || !data.ok) {
-            return { ok: false, message: data?.message || '激活碼異常或已使用' };
+          const result = data as any;
+          if (!result || !result.ok) {
+            return { ok: false, message: result?.message || '激活码异常或已失效' };
           }
 
+          // POINT 4: Synchronize all variables directly from the database output correctly
           await get().refreshProfile();
 
           return {
             ok: true,
-            message: data?.message || '激活成功',
-            tier: data?.tier as string,
-            effectiveTier: data?.effectiveTier as string,
+            message: result.message || '激活成功',
+            tier: result.tier as string,
+            effectiveTier: result.tier as string,
           };
         } catch (e: unknown) {
-          console.error('[Membership] Native Fetch Exception:', e);
+          console.error('[Membership] RPC Exception:', e);
           const msg = e instanceof Error ? e.message : '網路繁忙，請稍後重試';
           return { ok: false, message: msg };
         }
@@ -527,11 +526,26 @@ export const useQuizStore = create<QuizState>()(
         try {
           const { data, error } = await supabase.rpc('increment_test_usage', { user_id_param: state.user.id });
           if (error) throw error;
+          
+          // POINT 1 FIX: Backend returns { ok, message, count }. We must not cast object to boolean blindly.
+          const res = data as any;
+          
+          // If the backend RPC returns the new object format
+          if (res && typeof res === 'object') {
+            if (res.ok === false) {
+              return { ok: false, message: res.message || "测试次数已达上限" };
+            }
+          } 
+          // Fallback if backend still returns raw boolean
+          else if (res === false) {
+             return { ok: false, message: "剩余测试次数不足，请获取激活引擎" };
+          }
+          
           await get().refreshProfile();
-          return { ok: data as boolean };
+          return { ok: true };
         } catch (e) {
           console.error('[Usage] Increment failed', e);
-          return { ok: false };
+          return { ok: false, message: "系统繁忙，引擎响应超时" };
         }
       },
 
