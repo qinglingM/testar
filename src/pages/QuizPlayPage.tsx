@@ -178,40 +178,7 @@ const QuizPlayPage = () => {
             上一题
           </button>
 
-          <div className="flex gap-2">
-            <button
-              className="w-12 h-12 rounded-2xl bg-primary/5 text-primary border border-primary/10 flex items-center justify-center btn-press"
-              title="生成随机答案"
-              onClick={() => {
-                questions.forEach(q => {
-                  const randomIdx = Math.floor(Math.random() * q.options.length);
-                  setAnswer(q.id, randomIdx);
-                });
-                calculateResult(quizDef);
-                navigate(`/quiz/${slug}/analyzing`);
-              }}
-            >
-              <span className="text-xl">🪄</span>
-            </button>
 
-            <button
-              className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-500 border border-orange-500/20 flex items-center justify-center btn-press group"
-              title="生成极端情况答案"
-              onClick={() => {
-                questions.forEach(q => {
-                  // For spectrum (5 levels), choose 0 or 4. For choice, choose 0.
-                  const extremeIdx = q.type === 'spectrum' 
-                    ? (Math.random() > 0.5 ? 0 : 4) 
-                    : 0;
-                  setAnswer(q.id, extremeIdx);
-                });
-                calculateResult(quizDef);
-                navigate(`/quiz/${slug}/analyzing`);
-              }}
-            >
-              <span className="text-xl group-hover:scale-125 transition-transform">🔥</span>
-            </button>
-          </div>
           
           <button 
             className={`flex-1 py-4 px-4 rounded-2xl font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-all ${
