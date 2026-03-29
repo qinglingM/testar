@@ -129,7 +129,7 @@ const QuizResultPage = () => {
                   <p className="text-xs text-foreground font-bold mb-1 leading-relaxed line-clamp-1">
                     {detail.question}
                   </p>
-                  <p className="text-[10px] text-primary font-medium italic opacity-70">
+                  <p className="text-[10px] text-primary font-medium opacity-70">
                     选择：{detail.option}
                   </p>
                 </div>

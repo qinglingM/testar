@@ -126,20 +126,33 @@ const QuizReportPage = () => {
 
   const currentResult = quizDef.results.find(r => r.id === finalResult.id) || finalResult;
 
-  // Custom analysis logic based on dimensions
-  const coreAdvantages = (quizDef.dimensions || []).map(d => ({
-    title: d.label,
-    desc: quizDef.advantageLib?.[d.key]?.desc || "该特质展现出高度的独特性与增长潜力。",
-    icon: quizDef.advantageLib?.[d.key]?.icon || "✧"
-  })).slice(0, 3);
+  // Sort dimensions to find actual strengths
+  const topDimensions = [...(quizDef.dimensions || [])]
+    .sort((a, b) => (professionalScores[b.key] || 0) - (professionalScores[a.key] || 0))
+    .slice(0, 3);
+
+  // Custom analysis logic based on actual top dimensions
+  const coreAdvantages = topDimensions.map((d, index) => {
+    let specificDesc = quizDef.advantageLib?.[d.key]?.desc;
+    if (!specificDesc) {
+      if (index === 0) specificDesc = `在【${d.label}】维度上的显著极值，表明这已成为你的核心壁垒。这不仅意味着你在相关场景中具备绝对的肌肉记忆，更是你在竞争中能够形成错位优势的王牌。不要去补短板，将它发挥到极致即可。`;
+      else if (index === 1) specificDesc = `【${d.label}】构成了你重要的副武器。在处理复杂局面时，它常常能作为你第一天赋的缓冲垫，帮助你从另一种视角切入问题，这使得你的行事风格更具层次。`;
+      else specificDesc = `【${d.label}】特质的存在，保障了你的底层稳定性。这股潜能虽然不总是显性爆发，但它赋能了你的持久力，让你在顺境和逆境中都能保持一定的自我校验能力。`;
+    }
+    return {
+      title: `${d.label}天赋极高`,
+      desc: specificDesc,
+      icon: quizDef.advantageLib?.[d.key]?.icon || "✦"
+    };
+  });
 
   const keyTips = (quizDef.reportTips || [
-    "在关键决策点保持觉察，避免自动化反应。",
-    "将你的核心优势与具体场景结合，产生超额溢价。",
-    "保持认知的开放性，定期更新你的行为操作系统。"
+    "在关键决策点保持绝对理性的觉察，避免情绪自动化反应主导行为。",
+    "将你的核心优势与具体的商业或变现场景结合，才能产生实质的超额溢价。",
+    "保持认知框架的开放性，定期反向更新你的固有行为操作系统。"
   ]);
 
-  const relationshipAdvice = quizDef.relationshipAdvice || "你倾向于在深度链接中寻找安全感。建议在交往初期展示更多的边界感，这有助于建立更稳固的长久关系。";
+  const relationshipAdvice = quizDef.relationshipAdvice || `你在深度链接中极度渴求真正的灵魂共振。由于你的核心高分特质集中在【${topDimensions[0]?.label || '个体化'}】领域，这使得你在人际交往初期可能会散发出一种难以接近的边界感。极强的边界感能帮你有效过滤低效社交，屏蔽消耗你能量的人；但这也意味着，当你识别出高密度价值对象时，需要有意识地主动展现更多开放性，这能极大加速高质量人脉阵列的建立。`;
 
   // Footprint count logic
   const getFootprintCount = (total: number) => {
@@ -162,6 +175,7 @@ const QuizReportPage = () => {
   };
 
   const grade = getRarityGrade(rarity);
+  const [isFootprintExpanded, setIsFootprintExpanded] = useState(false);
 
   return (
     <MobileLayout>
@@ -226,12 +240,12 @@ const QuizReportPage = () => {
                        <Zap className="w-4 h-4 text-yellow-400" />
                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">未来路径建议</span>
                     </div>
-                    <p className="text-xs leading-relaxed italic opacity-90 mb-4">
+                    <p className="text-xs leading-relaxed opacity-90 mb-4">
                        {currentResult.paidAnalysis.futurePath}
                     </p>
                     <div className="h-px bg-white/10 w-full mb-4" />
                     <p className="text-[10px] leading-relaxed text-slate-400">
-                       基于当前探测位点，建议在未来三个月内有意识地强化{quizDef.dimensions[0].label}维度的冗余度。
+                       基于当前精准探测位点，建议在未来三个月内有意识地强化对【{topDimensions[0]?.label || quizDef.dimensions[0].label}】维度的刻意练习，这将带来显著的势能突破。
                     </p>
                  </div>
              </div>
@@ -261,7 +275,6 @@ const QuizReportPage = () => {
                bgClass="bg-gradient-to-br from-amber-50/60 via-background to-orange-50/40"
                borderClass="border-amber-200/50"
                iconElement={<Zap className="w-20 h-20" />}
-               isItalic
              />
           </ReportBlock>
         )}
@@ -280,8 +293,8 @@ const QuizReportPage = () => {
                 ))}
                 <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 mt-2">
                    <p className="text-[10px] text-primary font-bold uppercase mb-2 tracking-widest">专家优化建议</p>
-                   <p className="text-xs text-foreground/70 leading-relaxed italic font-bold">
-                     “尝试在你的{quizDef.dimensions[0].label}特质与实际业务目标之间建立更直接的量化联系，这能显著提升你的溢价。”
+                   <p className="text-xs text-foreground/70 leading-relaxed font-bold">
+                     “尝试在你的【{topDimensions[0]?.label || quizDef.dimensions[0].label}】特质与实际变现业务层之间建立更直接的量化联系，这是普通人与顶尖高手的绝对分水岭。”
                    </p>
                 </div>
              </div>
@@ -292,7 +305,7 @@ const QuizReportPage = () => {
           <ReportBlock title="灵魂交互与人际磁场" icon={Zap} delay={0.3}>
             <div className="relative">
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/40 to-transparent rounded-full" />
-              <div className="pl-5">
+              <div className="pl-5 cursor-default">
                 <p className="text-[13px] leading-relaxed text-foreground font-medium mb-4">
                   {relationshipAdvice}
                 </p>
@@ -304,12 +317,12 @@ const QuizReportPage = () => {
         <ReportBlock title="核心潜能优势库" icon={Lightbulb} delay={0.35}>
           <div className="grid grid-cols-1 gap-4">
             {coreAdvantages.map((adv, i) => (
-              <div key={i} className={`p-5 rounded-3xl border ${i === 0 ? 'bg-primary/5 border-primary/10' : 'bg-accent/5 border-accent/10'}`}>
-                <div className="flex items-center gap-3 mb-2">
-                   <span className="text-xl">{adv.icon}</span>
-                   <strong className="text-[13px] text-foreground font-black">{adv.title}</strong>
+              <div key={i} className={`p-5 rounded-3xl border ${i === 0 ? 'bg-primary/5 border-primary/10 shadow-sm' : 'bg-accent/5 border-accent/10'}`}>
+                <div className="flex items-center gap-3 mb-3">
+                   <span className="text-xl shadow-sm">{adv.icon}</span>
+                   <strong className="text-[14px] text-foreground font-black tracking-tight">{adv.title}</strong>
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed font-bold">
+                <p className="text-[13px] text-muted-foreground leading-relaxed font-bold">
                    {adv.desc}
                 </p>
               </div>
@@ -318,26 +331,35 @@ const QuizReportPage = () => {
         </ReportBlock>
 
         <ReportBlock title="核心行为足迹回溯" icon={History} delay={0.4}>
-          <div className="space-y-6">
-            {Object.keys(answers).slice(0, getFootprintCount(quizDef.questionsCount)).map((qId, idx) => {
-              const detail = getAnswerDetail(qId);
-              if (!detail) return null;
-              return (
-                <div key={qId} className="border-l-2 border-primary/20 pl-4">
-                  <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
-                    行为折射点 {idx + 1}
-                  </p>
-                  <p className="text-[13px] text-foreground font-bold mb-2 leading-relaxed">
-                    {detail.question}
-                  </p>
-                  <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-                    <p className="text-xs leading-relaxed text-foreground/80 italic font-medium">
-                      探测结果：<span className="text-primary font-bold">{detail.option}</span>
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="space-y-6 relative">
+            <div className="flex justify-between items-center mb-4 cursor-pointer btn-press border bg-card p-3 rounded-2xl" onClick={() => setIsFootprintExpanded(!isFootprintExpanded)}>
+              <span className="text-xs font-bold text-foreground">作答轨迹追踪 ({getFootprintCount(quizDef.questionsCount)}条)</span>
+              <span className="text-xs font-bold text-primary">{isFootprintExpanded ? '收起 ↑' : '展开查看详单 ↓'}</span>
+            </div>
+            
+            {isFootprintExpanded && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-6">
+                {Object.keys(answers).slice(0, getFootprintCount(quizDef.questionsCount)).map((qId, idx) => {
+                  const detail = getAnswerDetail(qId);
+                  if (!detail) return null;
+                  return (
+                    <div key={qId} className="border-l-2 border-primary/20 pl-4 ml-2">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
+                        行为折射点 {idx + 1}
+                      </p>
+                      <p className="text-[13px] text-foreground font-bold mb-2 leading-relaxed">
+                        {detail.question}
+                      </p>
+                      <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
+                        <p className="text-xs leading-relaxed text-foreground/80 font-medium">
+                          探测结果：<span className="text-primary font-bold">{detail.option}</span>
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </motion.div>
+            )}
           </div>
         </ReportBlock>
       </div>
